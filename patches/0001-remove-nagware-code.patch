@@ -1,0 +1,460 @@
+diff --git a/src/basegui.cpp b/src/basegui.cpp
+index 29064618..777d99c0 100644
+--- a/src/basegui.cpp
++++ b/src/basegui.cpp
+@@ -132,14 +132,6 @@
+   #endif
+ #endif
+ 
+-#ifdef SHARE_ACTIONS
+-#include "sharedialog.h"
+-#endif
+-
+-#ifdef SHARE_WIDGET
+-#include "sharewidget.h"
+-#endif
+-
+ #ifdef AUTO_SHUTDOWN_PC
+ #include "shutdowndialog.h"
+ #include "shutdown.h"
+@@ -260,10 +252,6 @@ BaseGui::BaseGui( QWidget* parent, Qt::WindowFlags flags )
+ 	QTimer::singleShot(2000, this, SLOT(checkIfUpgraded()));
+ #endif
+ 
+-#ifdef DONATE_REMINDER
+-	QTimer::singleShot(1000, this, SLOT(checkReminder()));
+-#endif
+-
+ #ifdef MPRIS2
+ 	if (pref->use_mpris2) new Mpris2(this, this);
+ #endif
+@@ -918,33 +906,10 @@ void BaseGui::createActions() {
+ 	connect( showConfigAct, SIGNAL(triggered()),
+              this, SLOT(helpShowConfig()) );
+ 
+-	donateAct = new MyAction( this, "donate" );
+-	connect( donateAct, SIGNAL(triggered()),
+-             this, SLOT(helpDonate()) );
+-
+ 	aboutThisAct = new MyAction( this, "about_smplayer" );
+ 	connect( aboutThisAct, SIGNAL(triggered()),
+              this, SLOT(helpAbout()) );
+ 
+-#ifdef SHARE_MENU
+-	facebookAct = new MyAction (this, "facebook");
+-	twitterAct = new MyAction (this, "twitter");
+-	gmailAct = new MyAction (this, "gmail");
+-	hotmailAct = new MyAction (this, "hotmail");
+-	yahooAct = new MyAction (this, "yahoo");
+-
+-	connect( facebookAct, SIGNAL(triggered()),
+-             this, SLOT(shareSMPlayer()) );
+-	connect( twitterAct, SIGNAL(triggered()),
+-             this, SLOT(shareSMPlayer()) );
+-	connect( gmailAct, SIGNAL(triggered()),
+-             this, SLOT(shareSMPlayer()) );
+-	connect( hotmailAct, SIGNAL(triggered()),
+-             this, SLOT(shareSMPlayer()) );
+-	connect( yahooAct, SIGNAL(triggered()),
+-             this, SLOT(shareSMPlayer()) );
+-#endif
+-
+ 	// OSD
+ 	incOSDScaleAct = new MyAction(Qt::SHIFT | Qt::Key_U, this, "inc_osd_scale");
+ 	connect(incOSDScaleAct, SIGNAL(triggered()), core, SLOT(incOSDScale()));
+@@ -1872,21 +1837,8 @@ void BaseGui::retranslateStrings() {
+ #endif
+ 
+ 	showConfigAct->change( Images::icon("show_config"), tr("&Open configuration folder") );
+-#ifdef SHARE_ACTIONS
+-	donateAct->change( Images::icon("donate"), tr("&Donate / Share with your friends") );
+-#else
+-	donateAct->change( Images::icon("donate"), tr("&Donate") );
+-#endif
+ 	aboutThisAct->change( Images::icon("logo"), tr("About &SMPlayer") );
+ 
+-#ifdef SHARE_MENU
+-	facebookAct->change("&Facebook");
+-	twitterAct->change("&Twitter");
+-	gmailAct->change("&Gmail");
+-	hotmailAct->change("&Hotmail");
+-	yahooAct->change("&Yahoo!");
+-#endif
+-
+ 	// OSD
+ 	incOSDScaleAct->change(tr("Size &+"));
+ 	decOSDScaleAct->change(tr("Size &-"));
+@@ -2171,11 +2123,6 @@ void BaseGui::retranslateStrings() {
+ 	osd_menu->menuAction()->setText( tr("&OSD") );
+ 	osd_menu->menuAction()->setIcon( Images::icon("osd") );
+ 
+-#ifdef SHARE_MENU
+-	share_menu->menuAction()->setText( tr("S&hare SMPlayer with your friends") );
+-	share_menu->menuAction()->setIcon( Images::icon("share") );
+-#endif
+-
+ #if defined(LOG_MPLAYER) || defined(LOG_SMPLAYER)
+ 	//logs_menu->menuAction()->setText( tr("&View logs") );
+ 	//logs_menu->menuAction()->setIcon( Images::icon("logs") );
+@@ -2355,14 +2302,6 @@ void BaseGui::createMplayerWindow() {
+ 	mplayerwindow->setAnimatedLogo( pref->animated_logo);
+ #endif
+ 
+-#ifdef SHARE_WIDGET
+-	sharewidget = new ShareWidget(Global::settings, mplayerwindow);
+-	mplayerwindow->setCornerWidget(sharewidget);
+-	//#ifdef SHARE_ACTIONS
+-	connect(sharewidget, SIGNAL(supportClicked()), this, SLOT(helpDonate()));
+-	//#endif
+-#endif
+-
+ 	QVBoxLayout * layout = new QVBoxLayout;
+ 	layout->setSpacing(0);
+ 	layout->setMargin(0);
+@@ -2747,16 +2686,6 @@ void BaseGui::createMenus() {
+ 	osd_menu->addAction(OSDFractionsAct);
+ #endif
+ 
+-	// Share submenu
+-	#ifdef SHARE_MENU
+-	share_menu = new QMenu(this);
+-	share_menu->addAction(facebookAct);
+-	share_menu->addAction(twitterAct);
+-	share_menu->addAction(gmailAct);
+-	share_menu->addAction(hotmailAct);
+-	share_menu->addAction(yahooAct);
+-	#endif
+-
+ 	// MENUS
+ 	openMenu = menuBar()->addMenu("Open");
+ 	playMenu = menuBar()->addMenu("Play");
+@@ -3010,12 +2939,6 @@ void BaseGui::populateMainMenu() {
+ 	optionsMenu->addAction(tabletModeAct);
+ 
+ 	// HELP MENU
+-	#ifdef SHARE_MENU
+-	if (!pref->tablet_mode) {
+-		helpMenu->addMenu(share_menu);
+-		helpMenu->addSeparator();
+-	}
+-	#endif
+ 	if (!pref->tablet_mode) {
+ 		helpMenu->addAction(showFirstStepsAct);
+ 		helpMenu->addAction(showFAQAct);
+@@ -3031,7 +2954,6 @@ void BaseGui::populateMainMenu() {
+ 		helpMenu->addAction(showConfigAct);
+ 		helpMenu->addSeparator();
+ 	}
+-	helpMenu->addAction(donateAct);
+ 	helpMenu->addSeparator();
+ 	helpMenu->addAction(aboutThisAct);
+ 
+@@ -4521,112 +4443,11 @@ void BaseGui::helpShowConfig() {
+ 	QDesktopServices::openUrl(QUrl::fromLocalFile(Paths::configPath()));
+ }
+ 
+-#ifdef SHARE_ACTIONS
+-void BaseGui::helpDonate() {
+-	ShareDialog d(this);
+-	d.showRemindCheck(false);
+-
+-	#ifdef SHARE_WIDGET
+-	d.setActions(sharewidget->actions());
+-	#endif
+-
+-	d.exec();
+-	int action = d.actions();
+-	qDebug("BaseGui::helpDonate: action: %d", action);
+-
+-	if (action > 0) {
+-		#ifdef SHARE_WIDGET
+-		sharewidget->setActions(action);
+-		#else
+-		QSettings * set = Global::settings;
+-		set->beginGroup("reminder");
+-		set->setValue("action", action);
+-		set->endGroup();
+-		#endif
+-	}
+-}
+-#else
+-void BaseGui::helpDonate() {
+-	qDebug("BaseGui::helpDonate");
+-
+-	int action = 0;
+-	bool accepted;
+-	showHelpDonateDialog(&accepted);
+-	if (accepted) action = 1;
+-
+-	if (action > 0) {
+-		QSettings * set = Global::settings;
+-		set->beginGroup("reminder");
+-		set->setValue("action", action);
+-		set->endGroup();
+-	}
+-}
+-
+-void BaseGui::showHelpDonateDialog(bool * accepted) {
+-	bool result = false;
+-
+-	QMessageBox d(this);
+-	d.setIconPixmap(Images::icon("donate"));
+-	d.setWindowTitle(tr("Support SMPlayer"));
+-
+-	QPushButton * ok_button = d.addButton(tr("Donate"), QMessageBox::YesRole);
+-	d.addButton(tr("No"), QMessageBox::NoRole);
+-	d.setDefaultButton(ok_button);
+-
+-	d.setText("<h1>" + tr("SMPlayer needs you") + "</h1><p>" +
+-		tr("SMPlayer is free software. However the development requires a lot of time and a lot of work.") + "<p>" +
+-		tr("In order to keep developing SMPlayer with new features we need your help.") + "<p>" +
+-		tr("Please consider to support the SMPlayer project by sending a donation.") + " " +
+-		tr("Even the smallest amount will help a lot.")
+-	);
+-	d.exec();
+-	if (d.clickedButton() == ok_button) {
+-		QDesktopServices::openUrl(QUrl(URL_DONATE));
+-		result = true;
+-	}
+-	if (accepted != 0) *accepted = result;
+-}
+-#endif
+-
+ void BaseGui::helpAbout() {
+ 	About d(this);
+ 	d.exec();
+ }
+ 
+-#ifdef SHARE_MENU
+-void BaseGui::shareSMPlayer() {
+-	QString text = QString("SMPlayer - Free Media Player with built-in codecs that can play and download Youtube videos").replace(" ","+");
+-	QString url = URL_HOMEPAGE;
+-
+-	if (sender() == twitterAct) {
+-		QDesktopServices::openUrl(QUrl("http://twitter.com/intent/tweet?text=" + text + "&url=" + url + "/&via=smplayer_dev"));
+-	}
+-	else
+-	if (sender() == gmailAct) {
+-		QDesktopServices::openUrl(QUrl("https://mail.google.com/mail/?view=cm&fs=1&to&su=" + text + "&body=" + url + "&ui=2&tf=1&shva=1"));
+-	}
+-	else
+-	if (sender() == yahooAct) {
+-		QDesktopServices::openUrl(QUrl("http://compose.mail.yahoo.com/?To=&Subject=" + text + "&body=" + url));
+-	}
+-	else
+-	if (sender() == hotmailAct) {
+-		QDesktopServices::openUrl(QUrl("http://www.hotmail.msn.com/secure/start?action=compose&to=&subject=" + text + "&body=" + url));
+-	}
+-	else
+-	if (sender() == facebookAct) {
+-		QDesktopServices::openUrl(QUrl("http://www.facebook.com/sharer.php?u=" + url + "&t=" + text));
+-
+-		#ifdef SHARE_ACTIONS
+-		QSettings * set = Global::settings;
+-		set->beginGroup("reminder");
+-		set->setValue("action", 2);
+-		set->endGroup();
+-		#endif
+-	}
+-}
+-#endif
+-
+ void BaseGui::showGotoDialog() {
+ 	TimeDialog d(this);
+ 	d.setLabel(tr("&Jump to:"));
+@@ -5014,57 +4835,6 @@ void BaseGui::checkIfUpgraded() {
+ }
+ #endif
+ 
+-#ifdef DONATE_REMINDER
+-void BaseGui::checkReminder() {
+-	qDebug("BaseGui::checkReminder");
+-
+-	if (core->state() == Core::Playing) return;
+-
+-	QSettings * set = Global::settings;
+-	set->beginGroup("reminder");
+-	int count = set->value("count", 0).toInt();
+-	count++;
+-	set->setValue("count", count);
+-	int action = set->value("action", 0).toInt();
+-	bool dont_show = set->value("dont_show_anymore", false).toBool();
+-	set->endGroup();
+-
+-#if 1
+-	if (dont_show) return;
+-
+-	if (action != 0) return;
+-	if ((count != 25) && (count != 45)) return;
+-#endif
+-
+-#ifdef SHARE_ACTIONS
+-	ShareDialog d(this);
+-	//d.showRemindCheck(false);
+-	d.exec();
+-	action = d.actions();
+-	qDebug("BaseGui::checkReminder: action: %d", action);
+-
+-	if (!d.isRemindChecked()) {
+-		set->beginGroup("reminder");
+-		set->setValue("dont_show_anymore", true);
+-		set->endGroup();
+-	}
+-#else
+-	action = 0;
+-	bool accepted;
+-	showHelpDonateDialog(&accepted);
+-	if (accepted) action = 1;
+-#endif
+-
+-	if (action > 0) {
+-		set->beginGroup("reminder");
+-		set->setValue("action", action);
+-		set->endGroup();
+-	}
+-
+-	//qDebug() << "size:" << d.size();
+-}
+-#endif
+-
+ #ifdef YOUTUBE_SUPPORT
+ void BaseGui::YTNoSslSupport() {
+ 	qDebug("BaseGui::YTNoSslSupport");
+diff --git a/src/basegui.h b/src/basegui.h
+index 272220cb..0547e882 100644
+--- a/src/basegui.h
++++ b/src/basegui.h
+@@ -36,7 +36,6 @@
+ 	#define MG_DELAYED_SEEK
+ #endif
+ 
+-//#define SHARE_MENU
+ //#define DETECT_MINIMIZE_WORKAROUND
+ 
+ #if !defined(Q_OS_WIN) && QT_VERSION >= 0x050000 && QT_VERSION < 0x050501
+@@ -69,14 +68,6 @@ class Favorites;
+ class TVList;
+ class UpdateChecker;
+ 
+-#ifdef SHARE_WIDGET
+-class ShareWidget;
+-#endif
+-
+-#ifndef SHARE_WIDGET
+-#define DONATE_REMINDER
+-#endif
+-
+ class BaseGui : public QMainWindow
+ {
+ 	Q_OBJECT
+@@ -129,17 +120,9 @@ public slots:
+ 	virtual void helpFAQ();
+ 	virtual void helpCLOptions();
+ 	virtual void helpCheckUpdates();
+-	virtual void helpDonate();
+-#ifndef SHARE_ACTIONS
+-	void showHelpDonateDialog(bool * accepted = 0);
+-#endif
+ 	virtual void helpShowConfig();
+ 	virtual void helpAbout();
+ 
+-#ifdef SHARE_MENU
+-	virtual void shareSMPlayer();
+-#endif
+-
+ 	virtual void loadSub();
+ 	virtual void loadAudioFile(); // Load external audio file
+ 
+@@ -245,10 +228,6 @@ protected slots:
+ 	void checkIfUpgraded();
+ #endif
+ 
+-#ifdef DONATE_REMINDER
+-	void checkReminder();
+-#endif
+-
+ #ifdef YOUTUBE_SUPPORT
+ 	void YTNoSslSupport();
+ 	void YTNoSignature(const QString &);
+@@ -577,17 +556,8 @@ protected:
+ 	MyAction * updateYTAct;
+ #endif
+ 	MyAction * showConfigAct;
+-	MyAction * donateAct;
+ 	MyAction * aboutThisAct;
+ 
+-#ifdef SHARE_MENU
+-	MyAction * facebookAct;
+-	MyAction * twitterAct;
+-	MyAction * gmailAct;
+-	MyAction * hotmailAct;
+-	MyAction * yahooAct;
+-#endif
+-
+ 	// OSD
+ 	MyAction * incOSDScaleAct;
+ 	MyAction * decOSDScaleAct;
+@@ -842,10 +812,6 @@ protected:
+ 	QMenu * closed_captions_menu;
+ 	QMenu * subfps_menu;
+ 
+-#ifdef SHARE_MENU
+-	QMenu * share_menu;
+-#endif
+-
+ 	QMenu * popup;
+ 	QMenu * recentfiles_menu;
+ 	QMenu * access_menu;
+@@ -884,10 +850,6 @@ protected:
+ 	UpdateChecker * update_checker;
+ #endif
+ 
+-#ifdef SHARE_WIDGET
+-	ShareWidget * sharewidget;
+-#endif
+-
+ 	QStringList actions_list;
+ 
+ 	QString pending_actions_to_run;
+diff --git a/src/smplayer.pro b/src/smplayer.pro
+index e3b224ee..3a7ad4f1 100644
+--- a/src/smplayer.pro
++++ b/src/smplayer.pro
+@@ -42,10 +42,6 @@ DEFINES += MPLAYER_SUPPORT
+ # (requires MPLAYER_SUPPORT)
+ DEFINES += MPLAYER2_SUPPORT
+ 
+-# OBSOLETE:
+-#DEFINES += SHARE_ACTIONS
+-#DEFINES += SHARE_WIDGET
+-
+ # If Qt >= 5.4
+ greaterThan(QT_MAJOR_VERSION, 4):greaterThan(QT_MINOR_VERSION, 3) {
+ 	DEFINES += HDPI_SUPPORT
+@@ -66,8 +62,6 @@ contains( DEFINES, SIMPLE_BUILD ) {
+ 	DEFINES -= MPRIS2
+ 	DEFINES -= UPDATE_CHECKER
+ 	DEFINES -= CHECK_UPGRADED
+-	DEFINES -= SHARE_ACTIONS
+-	DEFINES -= SHARE_WIDGET
+ 	DEFINES -= AUTO_SHUTDOWN_PC
+ 	DEFINES -= BOOKMARKS
+ 	DEFINES -= TV_SUPPORT
+@@ -510,17 +504,6 @@ contains( DEFINES, VIDEOPREVIEW ) {
+ }
+ 
+ 
+-contains( DEFINES, SHARE_ACTIONS ) {
+-	HEADERS += sharedialog.h
+-	SOURCES += sharedialog.cpp
+-	FORMS += sharedialog.ui
+-}
+-
+-contains( DEFINES, SHARE_WIDGET|SHARE_ACTIONS ) {
+-	HEADERS += sharewidget.h sharedata.h
+-	SOURCES += sharewidget.cpp sharedata.cpp
+-}
+-
+ contains( DEFINES, AUTO_SHUTDOWN_PC ) {
+ 	HEADERS += shutdowndialog.h shutdown.h
+ 	SOURCES += shutdowndialog.cpp shutdown.cpp
