@@ -1,0 +1,7 @@
+src/
+pkg/
+
+.directory
+.log
+*.run
+*.pkg.tar.*
