@@ -1,0 +1,72 @@
+# Maintainer: Isaak I. Aleksandrov
+
+pkgname=nvidia-390xx-dkms
+pkgver=390.132
+pkgrel=420
+pkgdesc="NVIDIA driver sources for linux, 390xx legacy branch"
+arch=('x86_64')
+url="https://www.nvidia.com/"
+depends=('dkms' "${pkgname//-dkms*}-utils=$pkgver" 'libglvnd')
+optdepends=('linux-headers: Build the module for Arch kernel'
+            'linux-hardened-headers: Build the module for Hardened Arch kernel'
+            'linux-lts-headers: Build the module for LTS Arch kernel'
+            'linux-zen-headers: Build the module for ZEN Arch kernel')
+conflicts=("${pkgname//-dkms*}"
+           "${pkgname//-dkms*}-hardened"
+           "${pkgname//-dkms*}-lts"
+           "${pkgname//-dkms*}-zen")
+provides=("${pkgname//-dkms*}=$pkgver")
+license=('custom')
+options=('!strip')
+_pkg="NVIDIA-Linux-x86_64-${pkgver}-no-compat32"
+source=("http://us.download.nvidia.com/XFree86/Linux-x86_64/${pkgver}/${_pkg}.run"
+        'kernel-4.16.patch'
+        'kernel-5.5.patch'
+        'kernel-5.6.patch')
+sha512sums=('cdd9b826d3ad96f6c255296336a988eb8e67e1916859319f6e19a24c32484ec5dbb00312bc641b62068829c757e301d14d6bcfc6d833ce78db83db862df59bbe'
+            'ad1185d998adbf89abf7aea300e5b3bbabe2296016f42592fbc232a6c3983f233df1103d37f35a041f12cc1c722d3edce813a4a1b215784a49c7f0e3e652b5af'
+            'f73ab1b1e9cced05e95cec0fc835c9cdb958a0b79274d21546310c7df77864e9f9c0008a06c42bdb8cbaa41354f9cc428fb0c5f5b28cf04b7e00553b48a8529f'
+            '0a9cc04706db5fba0e790dc87ba8469f996860f77f647b1e9e44d8336701120e547dab48c56ac9ac6b482d6f97fa039de1c8c0a3aa5b441516aa150fbc406483')
+
+prepare() {
+    sh "${_pkg}.run" --extract-only
+    cd "${_pkg}"
+
+    # Restore phys_to_dma support (still needed for 396.18)
+    # https://bugs.archlinux.org/task/58074
+    patch -p1 -i '../kernel-4.16.patch'
+
+    # https://gitlab.com/snippets/1943814
+    patch -p1 -i '../kernel-5.5.patch'
+
+    # https://gitlab.com/snippets/1943873
+    patch -p1 -i '../kernel-5.6.patch'
+
+    cd kernel
+    sed -i "s/__VERSION_STRING/${pkgver}/" dkms.conf
+    sed -i 's/__JOBS/`nproc`/' dkms.conf
+    sed -i 's/__DKMS_MODULES//' dkms.conf
+    sed -i '$iBUILT_MODULE_NAME[0]="nvidia"\
+DEST_MODULE_LOCATION[0]="/kernel/drivers/video"\
+BUILT_MODULE_NAME[1]="nvidia-uvm"\
+DEST_MODULE_LOCATION[1]="/kernel/drivers/video"\
+BUILT_MODULE_NAME[2]="nvidia-modeset"\
+DEST_MODULE_LOCATION[2]="/kernel/drivers/video"\
+BUILT_MODULE_NAME[3]="nvidia-drm"\
+DEST_MODULE_LOCATION[3]="/kernel/drivers/video"' dkms.conf
+
+    # linux-rt
+    sed -i 's/NV_EXCLUDE_BUILD_MODULES/IGNORE_PREEMPT_RT_PRESENCE=1 NV_EXCLUDE_BUILD_MODULES/' dkms.conf
+}
+
+package() {
+    cd ${_pkg}
+
+    install -dm 755 "${pkgdir}"/usr/src
+    cp -dr --no-preserve='ownership' kernel "${pkgdir}/usr/src/nvidia-${pkgver}"
+
+    echo "blacklist nouveau" |
+        install -Dm644 /dev/stdin "${pkgdir}/usr/lib/modprobe.d/${pkgname}.conf"
+
+    install -Dt "${pkgdir}/usr/share/licenses/${pkgname}" -m644 "${srcdir}/${_pkg}/LICENSE"
+}
