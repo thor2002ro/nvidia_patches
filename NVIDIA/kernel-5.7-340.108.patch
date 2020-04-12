@@ -35,10 +35,28 @@ index 125a690..2597080 100644
  	timer_setup \
  	do_gettimeofday \
 diff --git a/kernel/conftest.sh b/kernel/conftest.sh
-index b7a85f0..eac8a7a 100755
+index b7a85f0..a5225e5 100755
 --- a/kernel/conftest.sh
 +++ b/kernel/conftest.sh
-@@ -914,6 +914,21 @@ compile_test() {
+@@ -176,6 +176,7 @@ test_headers() {
+     FILES="$FILES linux/ktime.h"
+     FILES="$FILES linux/file.h"
+ 
++    FILES_ARCH="$FILES_ARCH asm/pgtable.h"
+     FILES_ARCH="$FILES_ARCH asm/set_memory.h"
+ 
+     translate_and_find_header_files $HEADERS      $FILES
+@@ -440,6 +441,9 @@ compile_test() {
+             # Determine if the set_memory_array_uc() function is present.
+             #
+             CODE="
++            #if defined(NV_ASM_PGTABLE_H_PRESENT)
++            #include <asm/pgtable.h>
++            #endif
+             #if defined(NV_ASM_SET_MEMORY_H_PRESENT)
+             #include <asm/set_memory.h>
+             #else
+@@ -914,6 +918,21 @@ compile_test() {
              fi
          ;;
  
@@ -60,7 +78,7 @@ index b7a85f0..eac8a7a 100755
          smp_call_function)
              #
              # Determine if the smp_call_function() function is
-@@ -1188,6 +1203,22 @@ compile_test() {
+@@ -1188,6 +1207,22 @@ compile_test() {
              compile_check_conftest "$CODE" "NV_IOREMAP_CACHE_PRESENT" "" "functions"
          ;;
  
@@ -83,7 +101,7 @@ index b7a85f0..eac8a7a 100755
          ioremap_wc)
              #
              # Determine if the ioremap_wc() function is present.
-@@ -1371,6 +1402,16 @@ compile_test() {
+@@ -1371,6 +1406,16 @@ compile_test() {
              compile_check_conftest "$CODE" "NV_FILE_OPERATIONS_HAS_COMPAT_IOCTL" "" "types"
          ;;
  
@@ -100,7 +118,7 @@ index b7a85f0..eac8a7a 100755
          sg_init_table)
              #
              # Determine if the sg_init_table() function is present.
-@@ -2044,6 +2085,42 @@ compile_test() {
+@@ -2044,6 +2089,42 @@ compile_test() {
              compile_check_conftest "$CODE" "NV_DRM_DRIVER_UNLOAD_HAS_INT_RETURN_TYPE" "" "types"
          ;;
  
@@ -163,13 +181,18 @@ index 79a02ae..3140f03 100644
  CLEAN="make clean"
  AUTOINSTALL="yes"
 diff --git a/kernel/nv-drm.c b/kernel/nv-drm.c
-index 0d1cdbf..b5e8859 100644
+index 0d1cdbf..85db07e 100644
 --- a/kernel/nv-drm.c
 +++ b/kernel/nv-drm.c
-@@ -47,12 +47,239 @@
- #include <drm/drm_gem.h>
- #endif
- 
+@@ -50,9 +50,236 @@
+ #if defined(NV_DRM_LEGACY_PCI_INIT_PRESENT)
+ #define nv_drm_pci_init drm_legacy_pci_init
+ #define nv_drm_pci_exit drm_legacy_pci_exit
+-#else
++#elif defined(NV_DRM_PCI_INIT_PRESENT)
+ #define nv_drm_pci_init drm_pci_init
+ #define nv_drm_pci_exit drm_pci_exit
++#else
 +#if defined(NV_DRM_GET_PCI_DEV_PRESENT)
 +#define nv_drm_get_pci_dev drm_get_pci_dev
 +#else
@@ -339,14 +362,6 @@ index 0d1cdbf..b5e8859 100644
 +}
 +#endif
 +
- #if defined(NV_DRM_LEGACY_PCI_INIT_PRESENT)
- #define nv_drm_pci_init drm_legacy_pci_init
- #define nv_drm_pci_exit drm_legacy_pci_exit
--#else
-+#elif defined(NV_DRM_PCI_INIT_PRESENT)
- #define nv_drm_pci_init drm_pci_init
- #define nv_drm_pci_exit drm_pci_exit
-+#else
 +/*
 + * Code from drm_legacy_pci_{init,exit}
 + * Extracted from tag: v5.6.3, file: drivers/gpu/drm/drm_pci.c
@@ -645,6 +660,28 @@ index 0cad8ff..043a08d 100644
  
  module $(MODULE_NAME).ko: $(UVM_MODULE_SYMVERS) debug_diagnostics_printing
  
+diff --git a/kernel/uvm/conftest.sh b/kernel/uvm/conftest.sh
+index b7a85f0..33e2a63 100755
+--- a/kernel/uvm/conftest.sh
++++ b/kernel/uvm/conftest.sh
+@@ -176,6 +176,7 @@ test_headers() {
+     FILES="$FILES linux/ktime.h"
+     FILES="$FILES linux/file.h"
+ 
++    FILES_ARCH="$FILES_ARCH asm/pgtable.h"
+     FILES_ARCH="$FILES_ARCH asm/set_memory.h"
+ 
+     translate_and_find_header_files $HEADERS      $FILES
+@@ -440,6 +441,9 @@ compile_test() {
+             # Determine if the set_memory_array_uc() function is present.
+             #
+             CODE="
++            #if defined(NV_ASM_PGTABLE_H_PRESENT)
++            #include <asm/pgtable.h>
++            #endif
+             #if defined(NV_ASM_SET_MEMORY_H_PRESENT)
+             #include <asm/set_memory.h>
+             #else
 diff --git a/kernel/uvm/nvidia_uvm_lite.c b/kernel/uvm/nvidia_uvm_lite.c
 index 6943e7c..9a7e3b6 100644
 --- a/kernel/uvm/nvidia_uvm_lite.c
