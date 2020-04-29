@@ -1,0 +1,57 @@
+From 4df3fd928463f6ecf37d3c57266b99e41f7e7a62 Mon Sep 17 00:00:00 2001
+From: "Isaak I. Aleksandrov" <Isaak.Aleksandrov@protonmail.ch>
+Date: Sun, 12 Apr 2020 14:24:32 +0000
+Subject: [PATCH 8/8] Fix missing asm type in 5.7
+
+---
+ kernel/conftest.sh     | 4 ++++
+ kernel/uvm/conftest.sh | 4 ++++
+ 2 files changed, 8 insertions(+)
+
+diff --git a/kernel/conftest.sh b/kernel/conftest.sh
+index eac8a7a..a5225e5 100755
+--- a/kernel/conftest.sh
++++ b/kernel/conftest.sh
+@@ -176,6 +176,7 @@ test_headers() {
+     FILES="$FILES linux/ktime.h"
+     FILES="$FILES linux/file.h"
+ 
++    FILES_ARCH="$FILES_ARCH asm/pgtable.h"
+     FILES_ARCH="$FILES_ARCH asm/set_memory.h"
+ 
+     translate_and_find_header_files $HEADERS      $FILES
+@@ -440,6 +441,9 @@ compile_test() {
+             # Determine if the set_memory_array_uc() function is present.
+             #
+             CODE="
++            #if defined(NV_ASM_PGTABLE_H_PRESENT)
++            #include <asm/pgtable.h>
++            #endif
+             #if defined(NV_ASM_SET_MEMORY_H_PRESENT)
+             #include <asm/set_memory.h>
+             #else
+diff --git a/kernel/uvm/conftest.sh b/kernel/uvm/conftest.sh
+index b7a85f0..33e2a63 100755
+--- a/kernel/uvm/conftest.sh
++++ b/kernel/uvm/conftest.sh
+@@ -176,6 +176,7 @@ test_headers() {
+     FILES="$FILES linux/ktime.h"
+     FILES="$FILES linux/file.h"
+ 
++    FILES_ARCH="$FILES_ARCH asm/pgtable.h"
+     FILES_ARCH="$FILES_ARCH asm/set_memory.h"
+ 
+     translate_and_find_header_files $HEADERS      $FILES
+@@ -440,6 +441,9 @@ compile_test() {
+             # Determine if the set_memory_array_uc() function is present.
+             #
+             CODE="
++            #if defined(NV_ASM_PGTABLE_H_PRESENT)
++            #include <asm/pgtable.h>
++            #endif
+             #if defined(NV_ASM_SET_MEMORY_H_PRESENT)
+             #include <asm/set_memory.h>
+             #else
+-- 
+2.26.2
+

@@ -1,0 +1,74 @@
+From d86a0d561fe99bd33026448679f848515e1fab4a Mon Sep 17 00:00:00 2001
+From: "Isaak I. Aleksandrov" <Isaak.Aleksandrov@protonmail.ch>
+Date: Wed, 4 Mar 2020 09:47:09 +0000
+Subject: [PATCH 3/8] Fix missing ioremap_nocache
+
+---
+ kernel/Makefile    |  1 +
+ kernel/conftest.sh | 16 ++++++++++++++++
+ kernel/nv-linux.h  |  5 +++++
+ 3 files changed, 22 insertions(+)
+
+diff --git a/kernel/Makefile b/kernel/Makefile
+index c713e53..b7a2de5 100644
+--- a/kernel/Makefile
++++ b/kernel/Makefile
+@@ -114,6 +114,7 @@ COMPILE_TESTS = \
+ 	nvmap_support \
+ 	acpi_evaluate_integer \
+ 	ioremap_cache \
++	ioremap_nocache \
+ 	ioremap_wc \
+ 	proc_dir_entry \
+ 	INIT_WORK \
+diff --git a/kernel/conftest.sh b/kernel/conftest.sh
+index e267495..bf291d7 100755
+--- a/kernel/conftest.sh
++++ b/kernel/conftest.sh
+@@ -1188,6 +1188,22 @@ compile_test() {
+             compile_check_conftest "$CODE" "NV_IOREMAP_CACHE_PRESENT" "" "functions"
+         ;;
+ 
++        ioremap_nocache)
++            #
++            # Determine if the ioremap_nocache() function is present.
++            #
++            # Removed by commit 4bdc0d676a64 ("remove ioremap_nocache and
++            # devm_ioremap_nocache") in v5.6 (2020-01-06)
++            #
++            CODE="
++            #include <asm/io.h>
++            void conftest_ioremap_nocache(void) {
++                ioremap_nocache();
++            }"
++
++            compile_check_conftest "$CODE" "NV_IOREMAP_NOCACHE_PRESENT" "" "functions"
++        ;;
++
+         ioremap_wc)
+             #
+             # Determine if the ioremap_wc() function is present.
+diff --git a/kernel/nv-linux.h b/kernel/nv-linux.h
+index 45bae03..9130cfa 100644
+--- a/kernel/nv-linux.h
++++ b/kernel/nv-linux.h
+@@ -688,11 +688,16 @@ extern nv_spinlock_t km_lock;
+         VM_ALLOC_RECORD(ptr, size, "vm_ioremap"); \
+     }
+ 
++#if defined(NV_IOREMAP_NOCACHE_PRESENT)
+ #define NV_IOREMAP_NOCACHE(ptr, physaddr, size) \
+     { \
+         (ptr) = ioremap_nocache(physaddr, size); \
+         VM_ALLOC_RECORD(ptr, size, "vm_ioremap_nocache"); \
+     }
++#else
++#define NV_IOREMAP_NOCACHE(ptr, physaddr, size) \
++    NV_IOREMAP(ptr, physaddr, size)
++#endif
+ 
+ #if defined(NV_IOREMAP_CACHE_PRESENT)
+ #define NV_IOREMAP_CACHE(ptr, physaddr, size)            \
+-- 
+2.26.2
+

@@ -1,0 +1,103 @@
+From 855ef941160289b5a8f66a616ad9c86081b5cd26 Mon Sep 17 00:00:00 2001
+From: "Isaak I. Aleksandrov" <Isaak.Aleksandrov@protonmail.ch>
+Date: Mon, 24 Feb 2020 13:44:09 +0000
+Subject: [PATCH 6/8] Fix timeval missing
+
+---
+ kernel/nv-time.h             |  9 +++++++--
+ kernel/os-interface.c        |  8 ++++----
+ kernel/uvm/nvidia_uvm_lite.c | 10 +++++-----
+ 3 files changed, 16 insertions(+), 11 deletions(-)
+
+diff --git a/kernel/nv-time.h b/kernel/nv-time.h
+index a34ceb2..780f8bc 100644
+--- a/kernel/nv-time.h
++++ b/kernel/nv-time.h
+@@ -28,7 +28,12 @@
+ #include <linux/ktime.h>
+ #endif
+ 
+-static inline void nv_gettimeofday(struct timeval *tv)
++struct nv_timeval {
++    __kernel_long_t      tv_sec;
++    __kernel_suseconds_t tv_usec;
++};
++
++static inline void nv_gettimeofday(struct nv_timeval *tv)
+ {
+ #ifdef NV_DO_GETTIMEOFDAY_PRESENT
+     do_gettimeofday(tv);
+@@ -37,7 +42,7 @@ static inline void nv_gettimeofday(struct timeval *tv)
+ 
+     ktime_get_real_ts64(&now);
+ 
+-    *tv = (struct timeval) {
++    *tv = (struct nv_timeval) {
+         .tv_sec = now.tv_sec,
+         .tv_usec = now.tv_nsec/1000,
+     };
+diff --git a/kernel/os-interface.c b/kernel/os-interface.c
+index 7190b26..0c0dc05 100644
+--- a/kernel/os-interface.c
++++ b/kernel/os-interface.c
+@@ -439,7 +439,7 @@ RM_STATUS NV_API_CALL os_get_current_time(
+     NvU32 *useconds
+ )
+ {
+-    struct timeval tm;
++    struct nv_timeval tm;
+ 
+     nv_gettimeofday(&tm);
+ 
+@@ -474,7 +474,7 @@ RM_STATUS NV_API_CALL os_delay_us(NvU32 MicroSeconds)
+     unsigned long usec;
+ 
+ #ifdef NV_CHECK_DELAY_ACCURACY
+-    struct timeval tm1, tm2;
++    struct nv_timeval tm1, tm2;
+ 
+     nv_gettimeofday(&tm1);
+ #endif
+@@ -514,9 +514,9 @@ RM_STATUS NV_API_CALL os_delay(NvU32 MilliSeconds)
+     unsigned long MicroSeconds;
+     unsigned long jiffies;
+     unsigned long mdelay_safe_msec;
+-    struct timeval tm_end, tm_aux;
++    struct nv_timeval tm_end, tm_aux;
+ #ifdef NV_CHECK_DELAY_ACCURACY
+-    struct timeval tm_start;
++    struct nv_timeval tm_start;
+ #endif
+ 
+     nv_gettimeofday(&tm_aux);
+diff --git a/kernel/uvm/nvidia_uvm_lite.c b/kernel/uvm/nvidia_uvm_lite.c
+index 6f0ceb3..9a7e3b6 100644
+--- a/kernel/uvm/nvidia_uvm_lite.c
++++ b/kernel/uvm/nvidia_uvm_lite.c
+@@ -131,8 +131,8 @@ static
+ RM_STATUS _preexisting_error_on_channel(UvmGpuMigrationTracking *pMigTracker,
+                                          UvmCommitRecord *pRecord);
+ 
+-static void _set_timeout_in_usec(struct timeval *src,
+-                                 struct timeval *result,
++static void _set_timeout_in_usec(struct nv_timeval *src,
++                                 struct nv_timeval *result,
+                                  unsigned long timeoutInUsec)
+ {
+     if (!src || !result)
+@@ -2011,9 +2011,9 @@ void umvlite_destroy_per_process_gpu_resources(UvmGpuUuid *gpuUuidStruct)
+ static RM_STATUS _check_ecc_errors(UvmGpuMigrationTracking *pMigTracker,
+                                     NvBool *pIsEccErrorSet)
+ {
+-    struct timeval eccErrorStartTime = {0};
+-    struct timeval eccErrorCurrentTime = {0};
+-    struct timeval eccTimeout = {0};
++    struct nv_timeval eccErrorStartTime = {0};
++    struct nv_timeval eccErrorCurrentTime = {0};
++    struct nv_timeval eccTimeout = {0};
+     NvBool bEccErrorTimeout = NV_FALSE;
+     NvBool bEccIncomingError = NV_FALSE;
+     unsigned rmInterruptSet = 0;
+-- 
+2.26.2
+

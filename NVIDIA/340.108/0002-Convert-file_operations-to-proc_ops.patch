@@ -1,0 +1,165 @@
+From b38b9fd8690b61a18ed8ff1a93661fd82532863c Mon Sep 17 00:00:00 2001
+From: "Isaak I. Aleksandrov" <Isaak.Aleksandrov@protonmail.ch>
+Date: Mon, 10 Feb 2020 21:36:30 +0000
+Subject: [PATCH 2/8] Convert file_operations to proc_ops
+
+---
+ kernel/Makefile    |  1 +
+ kernel/conftest.sh | 10 ++++++++++
+ kernel/nv-linux.h  | 33 +++++++++++++++++++++++++++++++++
+ kernel/nv-procfs.c | 20 ++++++++++++++++++++
+ 4 files changed, 64 insertions(+)
+
+diff --git a/kernel/Makefile b/kernel/Makefile
+index 125a690..c713e53 100644
+--- a/kernel/Makefile
++++ b/kernel/Makefile
+@@ -122,6 +122,7 @@ COMPILE_TESTS = \
+ 	pci_domain_nr \
+ 	pci_dma_mapping_error \
+ 	file_operations \
++	proc_ops \
+ 	sg_alloc_table \
+ 	sg_init_table \
+ 	pci_get_domain_bus_and_slot \
+diff --git a/kernel/conftest.sh b/kernel/conftest.sh
+index b7a85f0..e267495 100755
+--- a/kernel/conftest.sh
++++ b/kernel/conftest.sh
+@@ -1371,6 +1371,16 @@ compile_test() {
+             compile_check_conftest "$CODE" "NV_FILE_OPERATIONS_HAS_COMPAT_IOCTL" "" "types"
+         ;;
+ 
++        proc_ops)
++            CODE="
++            #include <linux/proc_fs.h>
++            int conftest_proc_ops(void) {
++                return offsetof(struct proc_ops, proc_open);
++            }"
++
++            compile_check_conftest "$CODE" "NV_HAVE_PROC_OPS" "" "types"
++        ;;
++
+         sg_init_table)
+             #
+             # Determine if the sg_init_table() function is present.
+diff --git a/kernel/nv-linux.h b/kernel/nv-linux.h
+index a1d2c68..45bae03 100644
+--- a/kernel/nv-linux.h
++++ b/kernel/nv-linux.h
+@@ -1971,6 +1971,19 @@ extern NvU32 nv_assign_gpu_count;
+     })
+ #endif
+ 
++#if defined(NV_HAVE_PROC_OPS)
++#define NV_CREATE_PROC_FILE(filename,parent,__name,__data)               \
++   ({                                                                    \
++        struct proc_dir_entry *__entry;                                  \
++        int mode = (S_IFREG | S_IRUGO);                                  \
++        const struct proc_ops *fops = &nv_procfs_##__name##_fops;        \
++        if (fops->proc_write != 0)                                       \
++            mode |= S_IWUSR;                                             \
++        __entry = NV_CREATE_PROC_ENTRY(filename, mode, parent, fops,     \
++            __data);                                                     \
++        __entry;                                                         \
++    })
++#else
+ #define NV_CREATE_PROC_FILE(filename,parent,__name,__data)               \
+    ({                                                                    \
+         struct proc_dir_entry *__entry;                                  \
+@@ -1982,6 +1995,7 @@ extern NvU32 nv_assign_gpu_count;
+             __data);                                                     \
+         __entry;                                                         \
+     })
++#endif
+ 
+ /*
+  * proc_mkdir_mode exists in Linux 2.6.9, but isn't exported until Linux 3.0.
+@@ -2023,6 +2037,24 @@ extern NvU32 nv_assign_gpu_count;
+     remove_proc_entry(entry->name, entry->parent);
+ #endif
+ 
++#if defined(NV_HAVE_PROC_OPS)
++#define NV_DEFINE_PROCFS_SINGLE_FILE(__name)                                  \
++    static int nv_procfs_open_##__name(                                       \
++        struct inode *inode,                                                  \
++        struct file *filep                                                    \
++    )                                                                         \
++    {                                                                         \
++        return single_open(filep, nv_procfs_read_##__name,                    \
++            NV_PDE_DATA(inode));                                              \
++    }                                                                         \
++                                                                              \
++    static const struct proc_ops nv_procfs_##__name##_fops = {                \
++        .proc_open       = nv_procfs_open_##__name,                           \
++        .proc_read       = seq_read,                                          \
++        .proc_lseek      = seq_lseek,                                         \
++        .proc_release    = single_release,                                    \
++    };
++#else
+ #define NV_DEFINE_PROCFS_SINGLE_FILE(__name)                                  \
+     static int nv_procfs_open_##__name(                                       \
+         struct inode *inode,                                                  \
+@@ -2040,6 +2072,7 @@ extern NvU32 nv_assign_gpu_count;
+         .llseek     = seq_lseek,                                              \
+         .release    = single_release,                                         \
+     };
++#endif
+ 
+ #endif  /* CONFIG_PROC_FS */
+ 
+diff --git a/kernel/nv-procfs.c b/kernel/nv-procfs.c
+index ebca3e8..9365c3c 100644
+--- a/kernel/nv-procfs.c
++++ b/kernel/nv-procfs.c
+@@ -409,6 +409,15 @@ done:
+     return ((status < 0) ? status : (int)count);
+ }
+ 
++#if defined(NV_HAVE_PROC_OPS)
++static struct proc_ops nv_procfs_registry_fops = {
++    .proc_open    = nv_procfs_open_registry,
++    .proc_read    = seq_read,
++    .proc_write   = nv_procfs_write_file,
++    .proc_lseek   = seq_lseek,
++    .proc_release = nv_procfs_close_registry,
++};
++#else
+ static struct file_operations nv_procfs_registry_fops = {
+     .owner   = THIS_MODULE,
+     .open    = nv_procfs_open_registry,
+@@ -417,6 +426,7 @@ static struct file_operations nv_procfs_registry_fops = {
+     .llseek  = seq_lseek,
+     .release = nv_procfs_close_registry,
+ };
++#endif
+ 
+ static int
+ nv_procfs_read_unbind_lock(
+@@ -538,6 +548,15 @@ done:
+     return rc;
+ }
+ 
++#if defined(NV_HAVE_PROC_OPS)
++static struct proc_ops nv_procfs_unbind_lock_fops = {
++    .proc_open    = nv_procfs_open_unbind_lock,
++    .proc_read    = seq_read,
++    .proc_write   = nv_procfs_write_file,
++    .proc_lseek   = seq_lseek,
++    .proc_release = nv_procfs_close_unbind_lock,
++};
++#else
+ static struct file_operations nv_procfs_unbind_lock_fops = {
+     .owner   = THIS_MODULE,
+     .open    = nv_procfs_open_unbind_lock,
+@@ -546,6 +565,7 @@ static struct file_operations nv_procfs_unbind_lock_fops = {
+     .llseek  = seq_lseek,
+     .release = nv_procfs_close_unbind_lock,
+ };
++#endif
+ 
+ static int
+ nv_procfs_read_text_file(
+-- 
+2.26.2
+

@@ -1,0 +1,93 @@
+From e04e2e3c8f5eac773d73ec900098138a30153927 Mon Sep 17 00:00:00 2001
+From: "Isaak I. Aleksandrov" <Isaak.Aleksandrov@protonmail.ch>
+Date: Mon, 10 Feb 2020 20:42:31 +0000
+Subject: [PATCH 1/8] Base compat fixes from AUR
+
+---
+ kernel/dkms.conf             |  8 +++++++-
+ kernel/uvm/Makefile          |  1 +
+ kernel/uvm/nvidia_uvm_lite.c | 19 +++++++++++++++++++
+ 3 files changed, 27 insertions(+), 1 deletion(-)
+
+diff --git a/kernel/dkms.conf b/kernel/dkms.conf
+index 79a02ae..3140f03 100644
+--- a/kernel/dkms.conf
++++ b/kernel/dkms.conf
+@@ -1,7 +1,13 @@
++if [ -x /usr/bin/nproc ]; then
++  num_cpu_cores=$(nproc)
++else
++  num_cpu_cores=1
++fi
++
+ PACKAGE_NAME="nvidia"
+ PACKAGE_VERSION="340.108"
+ BUILT_MODULE_NAME[0]="$PACKAGE_NAME"
+ DEST_MODULE_LOCATION[0]="/kernel/drivers/video"
+-MAKE[0]="make module KERNEL_UNAME=${kernelver}"
++MAKE[0]="make -j$num_cpu_cores module KERNEL_UNAME=${kernelver}"
+ CLEAN="make clean"
+ AUTOINSTALL="yes"
+diff --git a/kernel/uvm/Makefile b/kernel/uvm/Makefile
+index 0cad8ff..043a08d 100644
+--- a/kernel/uvm/Makefile
++++ b/kernel/uvm/Makefile
+@@ -207,6 +207,7 @@ ccflags-y += $(EXTRA_CFLAGS)
+ 
+ RM_MODULE_SYMVERS:= $(RM_OUT_DIR)/Module.symvers
+ UVM_MODULE_SYMVERS:= $(obj)/Module.symvers
++KBUILD_EXTRA_SYMBOLS:= $(UVM_MODULE_SYMVERS)
+ 
+ module $(MODULE_NAME).ko: $(UVM_MODULE_SYMVERS) debug_diagnostics_printing
+ 
+diff --git a/kernel/uvm/nvidia_uvm_lite.c b/kernel/uvm/nvidia_uvm_lite.c
+index 6943e7c..6f0ceb3 100644
+--- a/kernel/uvm/nvidia_uvm_lite.c
++++ b/kernel/uvm/nvidia_uvm_lite.c
+@@ -820,7 +820,13 @@ done:
+ }
+ 
+ #if defined(NV_VM_OPERATIONS_STRUCT_HAS_FAULT)
++#if LINUX_VERSION_CODE >= KERNEL_VERSION(4, 17, 0)
++vm_fault_t _fault(struct vm_fault *vmf)
++#elif LINUX_VERSION_CODE >= KERNEL_VERSION(4, 11, 0)
++int _fault(struct vm_fault *vmf)
++#else
+ int _fault(struct vm_area_struct *vma, struct vm_fault *vmf)
++#endif
+ {
+ #if defined(NV_VM_FAULT_HAS_ADDRESS)
+     unsigned long vaddr = vmf->address;
+@@ -828,8 +834,15 @@ int _fault(struct vm_area_struct *vma, struct vm_fault *vmf)
+     unsigned long vaddr = (unsigned long)vmf->virtual_address;
+ #endif
+     struct page *page = NULL;
++#if LINUX_VERSION_CODE >= KERNEL_VERSION(4, 17, 0)
++    vm_fault_t retval;
++#else
+     int retval;
+ 
++#endif
++#if LINUX_VERSION_CODE >= KERNEL_VERSION(4, 11, 0)
++   struct vm_area_struct *vma = vmf->vma;
++#endif
+     retval = _fault_common(vma, vaddr, &page, vmf->flags);
+ 
+     vmf->page = page;
+@@ -868,7 +881,13 @@ static struct vm_operations_struct uvmlite_vma_ops =
+ // it's dealing with anonymous mapping (see handle_pte_fault).
+ //
+ #if defined(NV_VM_OPERATIONS_STRUCT_HAS_FAULT)
++#if LINUX_VERSION_CODE >= KERNEL_VERSION(4, 17, 0)
++vm_fault_t _sigbus_fault(struct vm_fault *vmf)
++#elif LINUX_VERSION_CODE >= KERNEL_VERSION(4, 11, 0)
++int _sigbus_fault(struct vm_fault *vmf)
++#else
+ int _sigbus_fault(struct vm_area_struct *vma, struct vm_fault *vmf)
++#endif
+ {
+     vmf->page = NULL;
+     return VM_FAULT_SIGBUS;
+-- 
+2.26.2
+
