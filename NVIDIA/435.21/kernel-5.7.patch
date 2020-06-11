@@ -1,0 +1,25 @@
+diff --git a/kernel/conftest.sh b/kernel/conftest.sh
+index 9397034..dcd6dd5 100755
+--- a/kernel/conftest.sh
++++ b/kernel/conftest.sh
+@@ -132,6 +132,7 @@ test_headers() {
+     FILES_ARCH="$FILES_ARCH asm/prom.h"
+     FILES_ARCH="$FILES_ARCH asm/powernv.h"
+     FILES_ARCH="$FILES_ARCH asm/tlbflush.h"
++    FILES_ARCH="$FILES_ARCH asm/pgtable.h"
+ 
+     translate_and_find_header_files $HEADERS      $FILES
+     translate_and_find_header_files $HEADERS_ARCH $FILES_ARCH
+@@ -432,6 +433,9 @@ compile_test() {
+             # It does not exist on all architectures.
+             #
+             CODE="
++            #if defined(NV_ASM_PGTABLE_H_PRESENT)
++            #include <asm/pgtable.h>
++            #endif
+             #if defined(NV_ASM_SET_MEMORY_H_PRESENT)
+             #include <asm/set_memory.h>
+             #else
+-- 
+2.27.0
+
