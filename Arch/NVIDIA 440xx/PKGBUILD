@@ -20,15 +20,19 @@ license=('custom')
 options=('!strip')
 _pkg="NVIDIA-Linux-x86_64-${pkgver}"
 source=("https://download.nvidia.com/XFree86/Linux-x86_64/${pkgver}/${_pkg}.run"
-        'kernel-5.7.patch')
+        "https://gitlab.com/EULA/snippets/-/raw/master/NVIDIA/$pkgver/kernel-5.7.patch"
+        "https://gitlab.com/EULA/snippets/-/raw/master/NVIDIA/$pkgver/kernel-5.8.patch")
 sha512sums=('d86ed2cd715c5a9aebdd11ee562cfa454dbafdb1b468004cbb93d37ee258623f11144cf30b8b14996a4e093cb3119edc36d13152893d735e3536f49c45e2cca3'
-            'a010fc217ace313350aca05e3225c328ca98d5ce636d3742fc7a9e353e9af8d9cdd5424bee6dadbe57c8c0cb58f1f204129bf8ac25848256053cae31c286b8cd')
+            'a010fc217ace313350aca05e3225c328ca98d5ce636d3742fc7a9e353e9af8d9cdd5424bee6dadbe57c8c0cb58f1f204129bf8ac25848256053cae31c286b8cd'
+            '99a6fc7b3ad3980bfb72daed1c32966ab967dad7dfcdf6b2d6aba1607bc56f7d487693a02f6c2bd9b774fdebfa8579ca337e6dfc76842dcdd010fefa6a79f9d3')
 
 prepare() {
     sh "${_pkg}.run" --extract-only
     cd "${_pkg}"
 
+    # https://gitlab.com/EULA/snippets
     patch -p1 -i ../kernel-5.7.patch
+    patch -p1 -i ../kernel-5.8.patch
 
     cd kernel
     sed -i "s/__VERSION_STRING/${pkgver}/" dkms.conf
