@@ -6,7 +6,7 @@ Assorted NVIDIA related patches.
 General naming scheme is `kernel-[kernel version].patch`
 
 ## How to
-Replace `$VERSION` with the NVIDIA version you're patching, and `$KERNEL` with, well, the kernel version being targeted.
+Replace `$VERSION` with the NVIDIA version you're patching, and `$KERNEL` with the kernel version being targeted.
 
 ### Extract Driver & Patch
 ```raw

@@ -2,7 +2,9 @@ diff --git a/kernel/conftest.sh b/kernel/conftest.sh
 index 44e10fc..71d0695 100755
 --- a/kernel/conftest.sh
 +++ b/kernel/conftest.sh
-@@ -141,6 +141,7 @@ test_headers() {
+@@ -139,10 +139,11 @@ test_headers() {
+     FILES_ARCH="asm/book3s/64/hash-64k.h"
+     FILES_ARCH="$FILES_ARCH asm/set_memory.h"
      FILES_ARCH="$FILES_ARCH asm/prom.h"
      FILES_ARCH="$FILES_ARCH asm/powernv.h"
      FILES_ARCH="$FILES_ARCH asm/tlbflush.h"
@@ -10,7 +12,11 @@ index 44e10fc..71d0695 100755
  
      translate_and_find_header_files $HEADERS      $FILES
      translate_and_find_header_files $HEADERS_ARCH $FILES_ARCH
-@@ -458,6 +459,9 @@ compile_test() {
+ }
+ 
+@@ -456,10 +457,13 @@ compile_test() {
+             #
+             # Determine if the set_memory_array_uc() function is present.
              # It does not exist on all architectures.
              #
              CODE="
@@ -20,6 +26,8 @@ index 44e10fc..71d0695 100755
              #if defined(NV_ASM_SET_MEMORY_H_PRESENT)
              #include <asm/set_memory.h>
              #else
+             #include <asm/cacheflush.h>
+             #endif
 -- 
 2.27.0
 

@@ -2,7 +2,9 @@ diff --git a/kernel/common/inc/nv-linux.h b/kernel/common/inc/nv-linux.h
 index 3bce0c0..dd5303b 100644
 --- a/kernel/common/inc/nv-linux.h
 +++ b/kernel/common/inc/nv-linux.h
-@@ -575,7 +575,11 @@ static inline void *nv_ioremap(NvU64 phys, NvU64 size)
+@@ -573,11 +573,15 @@ static inline void *nv_ioremap(NvU64 phys, NvU64 size)
+     return ptr;
+ }
  
  static inline void *nv_ioremap_nocache(NvU64 phys, NvU64 size)
  {
@@ -14,11 +16,15 @@ index 3bce0c0..dd5303b 100644
      if (ptr)
          NV_MEMDBG_ADD(ptr, size);
      return ptr;
+ }
+ 
 diff --git a/kernel/common/inc/nv-procfs.h b/kernel/common/inc/nv-procfs.h
 index 3c812ea..e57c4f9 100644
 --- a/kernel/common/inc/nv-procfs.h
 +++ b/kernel/common/inc/nv-procfs.h
-@@ -52,6 +52,19 @@
+@@ -50,10 +50,23 @@
+         }                                                   \
+         __entry;                                            \
      })
  #endif
  
@@ -38,7 +44,11 @@ index 3c812ea..e57c4f9 100644
  #define NV_CREATE_PROC_FILE(filename,parent,__name,__data)               \
     ({                                                                    \
          struct proc_dir_entry *__entry;                                  \
-@@ -63,6 +76,7 @@
+         int mode = (S_IFREG | S_IRUGO);                                  \
+         const struct file_operations *fops = &nv_procfs_##__name##_fops; \
+@@ -61,10 +74,11 @@
+             mode |= S_IWUSR;                                             \
+         __entry = NV_CREATE_PROC_ENTRY(filename, mode, parent, fops,     \
              __data);                                                     \
          __entry;                                                         \
      })
@@ -46,7 +56,11 @@ index 3c812ea..e57c4f9 100644
  
  /*
   * proc_mkdir_mode exists in Linux 2.6.9, but isn't exported until Linux 3.0.
-@@ -104,6 +118,24 @@
+  * Use the older interface instead unless the newer interface is necessary.
+  */
+@@ -102,10 +116,28 @@
+ #else
+ # define NV_REMOVE_PROC_ENTRY(entry)                           \
      remove_proc_entry(entry->name, entry->parent);
  #endif
  
@@ -71,7 +85,11 @@ index 3c812ea..e57c4f9 100644
  #define NV_DEFINE_PROCFS_SINGLE_FILE(__name)                                  \
      static int nv_procfs_open_##__name(                                       \
          struct inode *inode,                                                  \
-@@ -121,6 +153,7 @@
+         struct file *filep                                                    \
+     )                                                                         \
+@@ -119,10 +151,11 @@
+         .open       = nv_procfs_open_##__name,                                \
+         .read       = seq_read,                                               \
          .llseek     = seq_lseek,                                              \
          .release    = single_release,                                         \
      };
@@ -79,11 +97,15 @@ index 3c812ea..e57c4f9 100644
  
  #endif  /* CONFIG_PROC_FS */
  
+ #endif /* _NV_PROCFS_H */
+ 
 diff --git a/kernel/common/inc/nv-time.h b/kernel/common/inc/nv-time.h
 index 968b873..fefec9d 100644
 --- a/kernel/common/inc/nv-time.h
 +++ b/kernel/common/inc/nv-time.h
-@@ -27,7 +27,13 @@
+@@ -25,20 +25,26 @@
+ 
+ #include "conftest.h"
  
  #include <linux/ktime.h>
  
@@ -98,7 +120,8 @@ index 968b873..fefec9d 100644
  {
  #ifdef NV_DO_GETTIMEOFDAY_PRESENT
      do_gettimeofday(tv);
-@@ -36,7 +42,7 @@ static inline void nv_gettimeofday(struct timeval *tv)
+ #else
+     struct timespec64 now;
  
      ktime_get_real_ts64(&now);
  
@@ -107,11 +130,15 @@ index 968b873..fefec9d 100644
          .tv_sec = now.tv_sec,
          .tv_usec = now.tv_nsec/1000,
      };
+ #endif // NV_DO_GETTIMEOFDAY_PRESENT
+ }
 diff --git a/kernel/conftest.sh b/kernel/conftest.sh
 index 7cf867a..dad704b 100755
 --- a/kernel/conftest.sh
 +++ b/kernel/conftest.sh
-@@ -132,6 +132,7 @@ test_headers() {
+@@ -130,10 +130,11 @@ test_headers() {
+     FILES="$FILES linux/sched/signal.h"
+     FILES="$FILES linux/sched/task.h"
      FILES="$FILES linux/sched/task_stack.h"
      FILES="$FILES xen/ioemu.h"
      FILES="$FILES linux/fence.h"
@@ -119,7 +146,11 @@ index 7cf867a..dad704b 100755
  
      # Arch specific headers which need testing
      FILES_ARCH="asm/book3s/64/hash-64k.h"
-@@ -853,6 +854,22 @@ compile_test() {
+     FILES_ARCH="$FILES_ARCH asm/set_memory.h"
+     FILES_ARCH="$FILES_ARCH asm/prom.h"
+@@ -851,10 +852,26 @@ compile_test() {
+             }"
+ 
              compile_check_conftest "$CODE" "NV_IOREMAP_CACHE_PRESENT" "" "functions"
          ;;
  
@@ -142,7 +173,11 @@ index 7cf867a..dad704b 100755
          ioremap_wc)
              #
              # Determine if the ioremap_wc() function is present.
-@@ -940,6 +957,55 @@ compile_test() {
+             # It does not exist on all architectures.
+             #
+@@ -938,10 +955,59 @@ compile_test() {
+             }"
+ 
              compile_check_conftest "$CODE" "NV_SG_ALLOC_TABLE_FROM_PAGES_PRESENT" "" "functions"
          ;;
  
@@ -198,11 +233,15 @@ index 7cf867a..dad704b 100755
          efi_enabled)
              #
              # Added in 2.6.12 as a variable
+             #
+             # Determine if the efi_enabled symbol is present (as a variable),
 diff --git a/kernel/nvidia-modeset/nvidia-modeset-linux.c b/kernel/nvidia-modeset/nvidia-modeset-linux.c
 index d42aabb..f0404fb 100644
 --- a/kernel/nvidia-modeset/nvidia-modeset-linux.c
 +++ b/kernel/nvidia-modeset/nvidia-modeset-linux.c
-@@ -216,7 +216,7 @@ void NVKMS_API_CALL nvkms_usleep(NvU64 usec)
+@@ -214,11 +214,11 @@ void NVKMS_API_CALL nvkms_usleep(NvU64 usec)
+     }
+ }
  
  NvU64 NVKMS_API_CALL nvkms_get_usec(void)
  {
@@ -211,11 +250,15 @@ index d42aabb..f0404fb 100644
  
      nv_gettimeofday(&tv);
  
+     return (((NvU64)tv.tv_sec) * 1000000) + tv.tv_usec;
+ }
 diff --git a/kernel/nvidia-uvm/uvm_linux.h b/kernel/nvidia-uvm/uvm_linux.h
 index b140f44..2112391 100644
 --- a/kernel/nvidia-uvm/uvm_linux.h
 +++ b/kernel/nvidia-uvm/uvm_linux.h
-@@ -318,7 +318,16 @@ static inline uint64_t NV_DIV64(uint64_t dividend, uint64_t divisor, uint64_t *r
+@@ -316,11 +316,20 @@ static inline uint64_t NV_DIV64(uint64_t dividend, uint64_t divisor, uint64_t *r
+ 
+     return dividend / divisor;
  }
  #endif
  
@@ -233,7 +276,11 @@ index b140f44..2112391 100644
  /* Return a nanosecond-precise value */
  static inline NvU64 NV_GETTIME(void)
  {
-@@ -334,7 +343,7 @@ static inline NvU64 NV_GETTIME(void)
+     struct timespec ts = {0};
+ 
+@@ -332,11 +341,11 @@ static inline NvU64 NV_GETTIME(void)
+ #else
+ /* We can only return a microsecond-precise value with the
   * available non-GPL symbols. */
  static inline NvU64 NV_GETTIME(void)
  {
@@ -242,11 +289,15 @@ index b140f44..2112391 100644
  
      nv_gettimeofday(&tv);
  
+     return (tv.tv_sec * 1000000000ULL + tv.tv_usec * 1000ULL);
+ }
 diff --git a/kernel/nvidia/linux_nvswitch.c b/kernel/nvidia/linux_nvswitch.c
 index e4381b5..92bda66 100644
 --- a/kernel/nvidia/linux_nvswitch.c
 +++ b/kernel/nvidia/linux_nvswitch.c
-@@ -1559,10 +1559,17 @@ nvswitch_os_get_platform_time
+@@ -1557,14 +1557,21 @@ NVLINK_API_CALL
+ nvswitch_os_get_platform_time
+ (
      void
  )
  {
@@ -264,11 +315,15 @@ index e4381b5..92bda66 100644
  }
  
  void
+ NVLINK_API_CALL
+ nvswitch_os_print
 diff --git a/kernel/nvidia/nv-procfs.c b/kernel/nvidia/nv-procfs.c
 index 220eeef..ebbdb29 100644
 --- a/kernel/nvidia/nv-procfs.c
 +++ b/kernel/nvidia/nv-procfs.c
-@@ -436,6 +436,15 @@ done:
+@@ -434,18 +434,28 @@ done:
+     up(&nvfp->fops_sp_lock[NV_FOPS_STACK_INDEX_PROCFS]);
+ 
      return ((status < 0) ? status : (int)count);
  }
  
@@ -284,7 +339,8 @@ index 220eeef..ebbdb29 100644
  static struct file_operations nv_procfs_registry_fops = {
      .owner   = THIS_MODULE,
      .open    = nv_procfs_open_registry,
-@@ -444,6 +453,7 @@ static struct file_operations nv_procfs_registry_fops = {
+     .read    = seq_read,
+     .write   = nv_procfs_write_file,
      .llseek  = seq_lseek,
      .release = nv_procfs_close_registry,
  };
@@ -292,7 +348,11 @@ index 220eeef..ebbdb29 100644
  
  /*
   * Forwards error to nv_log_error which exposes data to vendor callback
-@@ -539,12 +549,20 @@ done:
+  */
+ void
+@@ -537,16 +547,24 @@ done:
+     nv_free_file_private(nvfp);
+ 
      return status;
  }
  
@@ -313,7 +373,11 @@ index 220eeef..ebbdb29 100644
  
  static int
  nv_procfs_read_unbind_lock(
-@@ -672,6 +690,15 @@ done:
+     struct seq_file *s,
+     void *v
+@@ -670,18 +688,28 @@ done:
+     nv_free_file_private(nvfp);
+ 
      return rc;
  }
  
@@ -329,7 +393,8 @@ index 220eeef..ebbdb29 100644
  static struct file_operations nv_procfs_unbind_lock_fops = {
      .owner   = THIS_MODULE,
      .open    = nv_procfs_open_unbind_lock,
-@@ -680,6 +707,7 @@ static struct file_operations nv_procfs_unbind_lock_fops = {
+     .read    = seq_read,
+     .write   = nv_procfs_write_file,
      .llseek  = seq_lseek,
      .release = nv_procfs_close_unbind_lock,
  };
@@ -337,7 +402,11 @@ index 220eeef..ebbdb29 100644
  
  static const char*
  numa_status_describe(nv_numa_status_t state)
-@@ -987,6 +1015,22 @@ done:
+ {
+     if (state < 0 || state >= NV_NUMA_STATUS_COUNT)
+@@ -985,10 +1013,26 @@ done:
+ 
+     nv_free_file_private(nvfp);
      return retval;
  }
  
@@ -360,7 +429,11 @@ index 220eeef..ebbdb29 100644
  static const struct file_operations nv_procfs_numa_status_fops = {
      .owner   = THIS_MODULE,
      .open    = nv_procfs_open_numa_status,
-@@ -1003,6 +1047,7 @@ static const struct file_operations nv_procfs_offline_pages_fops = {
+     .read    = seq_read,
+     .write   = nv_procfs_write_file,
+@@ -1001,10 +1045,11 @@ static const struct file_operations nv_procfs_offline_pages_fops = {
+     .open    = nv_procfs_open_offline_pages,
+     .read    = seq_read,
      .llseek  = seq_lseek,
      .release = nv_procfs_close_offline_pages,
  };
@@ -368,11 +441,15 @@ index 220eeef..ebbdb29 100644
  
  static int
  nv_procfs_read_text_file(
+     struct seq_file *s,
+     void *v
 diff --git a/kernel/nvidia/nvidia.Kbuild b/kernel/nvidia/nvidia.Kbuild
 index d079e5d..0c76cad 100644
 --- a/kernel/nvidia/nvidia.Kbuild
 +++ b/kernel/nvidia/nvidia.Kbuild
-@@ -117,6 +117,7 @@ NV_CONFTEST_FUNCTION_COMPILE_TESTS += on_each_cpu
+@@ -115,18 +115,21 @@ NV_CONFTEST_FUNCTION_COMPILE_TESTS += console_lock
+ NV_CONFTEST_FUNCTION_COMPILE_TESTS += kmem_cache_create
+ NV_CONFTEST_FUNCTION_COMPILE_TESTS += on_each_cpu
  NV_CONFTEST_FUNCTION_COMPILE_TESTS += smp_call_function
  NV_CONFTEST_FUNCTION_COMPILE_TESTS += acpi_evaluate_integer
  NV_CONFTEST_FUNCTION_COMPILE_TESTS += ioremap_cache
@@ -380,7 +457,8 @@ index d079e5d..0c76cad 100644
  NV_CONFTEST_FUNCTION_COMPILE_TESTS += ioremap_wc
  NV_CONFTEST_FUNCTION_COMPILE_TESTS += acpi_walk_namespace
  NV_CONFTEST_FUNCTION_COMPILE_TESTS += pci_domain_nr
-@@ -125,6 +126,8 @@ NV_CONFTEST_FUNCTION_COMPILE_TESTS += sg_alloc_table
+ NV_CONFTEST_FUNCTION_COMPILE_TESTS += pci_dma_mapping_error
+ NV_CONFTEST_FUNCTION_COMPILE_TESTS += sg_alloc_table
  NV_CONFTEST_FUNCTION_COMPILE_TESTS += sg_init_table
  NV_CONFTEST_FUNCTION_COMPILE_TESTS += pci_get_domain_bus_and_slot
  NV_CONFTEST_FUNCTION_COMPILE_TESTS += get_num_physpages
@@ -389,7 +467,11 @@ index d079e5d..0c76cad 100644
  NV_CONFTEST_FUNCTION_COMPILE_TESTS += efi_enabled
  NV_CONFTEST_FUNCTION_COMPILE_TESTS += proc_create_data
  NV_CONFTEST_FUNCTION_COMPILE_TESTS += pde_data
-@@ -171,7 +174,9 @@ NV_CONFTEST_TYPE_COMPILE_TESTS += outer_flush_all
+ NV_CONFTEST_FUNCTION_COMPILE_TESTS += proc_remove
+ NV_CONFTEST_FUNCTION_COMPILE_TESTS += pm_vt_switch_required
+@@ -169,11 +172,13 @@ NV_CONFTEST_TYPE_COMPILE_TESTS += acpi_op_remove
+ NV_CONFTEST_TYPE_COMPILE_TESTS += acpi_device_id
+ NV_CONFTEST_TYPE_COMPILE_TESTS += outer_flush_all
  NV_CONFTEST_TYPE_COMPILE_TESTS += proc_dir_entry
  NV_CONFTEST_TYPE_COMPILE_TESTS += scatterlist
  NV_CONFTEST_TYPE_COMPILE_TESTS += sg_table
@@ -399,11 +481,15 @@ index d079e5d..0c76cad 100644
  NV_CONFTEST_TYPE_COMPILE_TESTS += vm_operations_struct
  NV_CONFTEST_TYPE_COMPILE_TESTS += atomic_long_type
  NV_CONFTEST_TYPE_COMPILE_TESTS += file_inode
+ NV_CONFTEST_TYPE_COMPILE_TESTS += task_struct
+ NV_CONFTEST_TYPE_COMPILE_TESTS += kuid_t
 diff --git a/kernel/nvidia/nvlink_linux.c b/kernel/nvidia/nvlink_linux.c
 index 546ace9..b74ea71 100644
 --- a/kernel/nvidia/nvlink_linux.c
 +++ b/kernel/nvidia/nvlink_linux.c
-@@ -503,8 +503,8 @@ void * NVLINK_API_CALL nvlink_memcpy(void *dest, void *src, NvLength size)
+@@ -501,23 +501,23 @@ void * NVLINK_API_CALL nvlink_memcpy(void *dest, void *src, NvLength size)
+     return memcpy(dest, src, size);
+ }
  
  static NvBool nv_timer_less_than
  (
@@ -414,7 +500,8 @@ index 546ace9..b74ea71 100644
  )
  {
      return (a->tv_sec == b->tv_sec) ? (a->tv_usec < b->tv_usec) 
-@@ -513,9 +513,9 @@ static NvBool nv_timer_less_than
+                                     : (a->tv_sec < b->tv_sec);
+ }
  
  static void nv_timeradd
  (
@@ -427,7 +514,11 @@ index 546ace9..b74ea71 100644
  )
  {
      result->tv_sec = a->tv_sec + b->tv_sec;
-@@ -529,9 +529,9 @@ static void nv_timeradd
+     result->tv_usec = a->tv_usec + b->tv_usec;
+     while (result->tv_usec >= 1000000)
+@@ -527,13 +527,13 @@ static void nv_timeradd
+     }
+ }
  
  static void nv_timersub
  (
@@ -440,7 +531,11 @@ index 546ace9..b74ea71 100644
  )
  {
      result->tv_sec = a->tv_sec - b->tv_sec;
-@@ -551,7 +551,7 @@ void NVLINK_API_CALL nvlink_sleep(unsigned int ms)
+     result->tv_usec = a->tv_usec - b->tv_usec;
+     while (result->tv_usec < 0)
+@@ -549,11 +549,11 @@ static void nv_timersub
+ void NVLINK_API_CALL nvlink_sleep(unsigned int ms)
+ {
      unsigned long us;
      unsigned long jiffies;
      unsigned long mdelay_safe_msec;
@@ -449,11 +544,15 @@ index 546ace9..b74ea71 100644
  
      nv_gettimeofday(&tm_aux);
  
+     if (in_irq() && (ms > NV_MAX_ISR_DELAY_MS))
+     {
 diff --git a/kernel/nvidia/os-interface.c b/kernel/nvidia/os-interface.c
 index 8f2d968..a4a37a8 100644
 --- a/kernel/nvidia/os-interface.c
 +++ b/kernel/nvidia/os-interface.c
-@@ -429,7 +429,7 @@ NV_STATUS NV_API_CALL os_get_current_time(
+@@ -427,11 +427,11 @@ void NV_API_CALL os_free_mem(void *address)
+ NV_STATUS NV_API_CALL os_get_current_time(
+     NvU32 *seconds,
      NvU32 *useconds
  )
  {
@@ -462,7 +561,11 @@ index 8f2d968..a4a37a8 100644
  
      nv_gettimeofday(&tm);
  
-@@ -443,9 +443,15 @@ NV_STATUS NV_API_CALL os_get_current_time(
+     *seconds = tm.tv_sec;
+     *useconds = tm.tv_usec;
+@@ -441,13 +441,19 @@ NV_STATUS NV_API_CALL os_get_current_time(
+ 
+ #if BITS_PER_LONG >= 64
  
  void NV_API_CALL os_get_current_tick(NvU64 *nseconds)
  {
@@ -478,7 +581,11 @@ index 8f2d968..a4a37a8 100644
  
      *nseconds = ((NvU64)ts.tv_sec * NSEC_PER_SEC + (NvU64)ts.tv_nsec);
  }
-@@ -515,7 +521,7 @@ NV_STATUS NV_API_CALL os_delay_us(NvU32 MicroSeconds)
+ 
+ NvU64 NV_API_CALL os_get_tick_resolution(void)
+@@ -513,11 +519,11 @@ NV_STATUS NV_API_CALL os_delay_us(NvU32 MicroSeconds)
+ {
+     unsigned long mdelay_safe_msec;
      unsigned long usec;
  
  #ifdef NV_CHECK_DELAY_ACCURACY
@@ -487,7 +594,11 @@ index 8f2d968..a4a37a8 100644
  
      nv_gettimeofday(&tm1);
  #endif
-@@ -555,9 +561,9 @@ NV_STATUS NV_API_CALL os_delay(NvU32 MilliSeconds)
+ 
+     if (in_irq() && (MicroSeconds > NV_MAX_ISR_DELAY_US))
+@@ -553,13 +559,13 @@ NV_STATUS NV_API_CALL os_delay_us(NvU32 MicroSeconds)
+ NV_STATUS NV_API_CALL os_delay(NvU32 MilliSeconds)
+ {
      unsigned long MicroSeconds;
      unsigned long jiffies;
      unsigned long mdelay_safe_msec;
@@ -499,7 +610,11 @@ index 8f2d968..a4a37a8 100644
  #endif
  
      nv_gettimeofday(&tm_aux);
-@@ -1914,7 +1920,7 @@ static NV_STATUS NV_API_CALL _os_ipmi_receive_resp
+ #ifdef NV_CHECK_DELAY_ACCURACY
+     tm_start = tm_aux;
+@@ -1912,11 +1918,11 @@ static NV_STATUS NV_API_CALL _os_ipmi_receive_resp
+     nvipmi_resp_t           *p_resp
+ )
  {
      struct ipmi_recv_msg    *rx_msg;
      int                     err_no;
@@ -508,6 +623,8 @@ index 8f2d968..a4a37a8 100644
      NvU64                   start_time;
  
      nv_gettimeofday(&tv);
+     start_time = NV_TIMEVAL_TO_US(tv);
+ 
 -- 
 2.27.0
 
