@@ -83,24 +83,25 @@ index 8b53f86..4c5aceb 100644
  #endif  /* CONFIG_PROC_FS */
  
 diff --git a/kernel/common/inc/nv-time.h b/kernel/common/inc/nv-time.h
-index 968b873..f03c7b0 100644
+index 968b873..fefec9d 100644
 --- a/kernel/common/inc/nv-time.h
 +++ b/kernel/common/inc/nv-time.h
-@@ -27,7 +27,12 @@
+@@ -27,7 +27,13 @@
  
  #include <linux/ktime.h>
  
 -static inline void nv_gettimeofday(struct timeval *tv)
-+struct nv_timeval {
-+    __kernel_long_t      tv_sec;
-+    __kernel_suseconds_t tv_usec;
-+};
++#if defined(NV_HAVE_TIMEVAL)
++#define nv_timeval timeval
++#else
++#define nv_timeval __kernel_old_timeval
++#endif
 +
 +static inline void nv_gettimeofday(struct nv_timeval *tv)
  {
  #ifdef NV_DO_GETTIMEOFDAY_PRESENT
      do_gettimeofday(tv);
-@@ -36,7 +41,7 @@ static inline void nv_gettimeofday(struct timeval *tv)
+@@ -36,7 +42,7 @@ static inline void nv_gettimeofday(struct timeval *tv)
  
      ktime_get_real_ts64(&now);
  
@@ -110,10 +111,10 @@ index 968b873..f03c7b0 100644
          .tv_usec = now.tv_nsec/1000,
      };
 diff --git a/kernel/conftest.sh b/kernel/conftest.sh
-index 57d85a4..4eb703f 100755
+index 57d85a4..ec7e1c9 100755
 --- a/kernel/conftest.sh
 +++ b/kernel/conftest.sh
-@@ -806,6 +806,46 @@ compile_test() {
+@@ -806,6 +806,55 @@ compile_test() {
              compile_check_conftest "$CODE" "NV_FILE_OPERATIONS_HAS_IOCTL" "" "types"
          ;;
  
@@ -127,6 +128,19 @@ index 57d85a4..4eb703f 100755
 +            compile_check_conftest "$CODE" "NV_HAVE_PROC_OPS" "" "types"
 +        ;;
 +
++        timeval)
++            CODE="
++            #include <linux/time.h>
++            #if defined(NV_LINUX_KTIME_H_PRESENT)
++            #include <linux/ktime.h>
++            #endif
++            int conftest_timeval(void) {
++                return offsetof(struct timeval, tv_sec);
++            }"
++
++            compile_check_conftest "$CODE" "NV_HAVE_TIMEVAL" "" "types"
++        ;;
++
 +        ktime_get_raw_ts64)
 +            #
 +            # Determine if the ktime_get_raw_ts64() function is present.
@@ -134,9 +148,7 @@ index 57d85a4..4eb703f 100755
 +            CODE="
 +            #include <linux/ktime.h>
 +            int conftest_ktime_get_raw_ts64(void) {
-+                struct timespec64 ts = {0};
-+
-+                ktime_get_raw_ts64(&ts64);
++                ktime_get_raw_ts64();
 +            }"
 +
 +            compile_check_conftest "$CODE" "NV_KTIME_GET_RAW_TS64_PRESENT" "" "functions"
@@ -149,9 +161,7 @@ index 57d85a4..4eb703f 100755
 +            CODE="
 +            #include <linux/ktime.h>
 +            int conftest_ktime_get_raw_ts64(void) {
-+                struct timespec64 ts = {0};
-+
-+                ktime_get_real_ts64(&ts64);
++                ktime_get_real_ts64();
 +            }"
 +
 +            compile_check_conftest "$CODE" "NV_KTIME_GET_REAL_TS64_PRESENT" "" "functions"
@@ -205,7 +215,7 @@ index 30a9dea..1a20eff 100644
      nv_gettimeofday(&tv);
  
 diff --git a/kernel/nvidia/linux_nvswitch.c b/kernel/nvidia/linux_nvswitch.c
-index 1d2c1bc..0a0b4e8 100644
+index 1d2c1bc..30886df 100644
 --- a/kernel/nvidia/linux_nvswitch.c
 +++ b/kernel/nvidia/linux_nvswitch.c
 @@ -1578,10 +1578,17 @@ nvswitch_os_get_platform_time
@@ -216,7 +226,7 @@ index 1d2c1bc..0a0b4e8 100644
 +    struct timespec64 ts64;
 +
 +    ktime_get_real_ts64(&ts64);
-+    return ((NvU64)(ts64.tv_sec * NSEC_PER_SEC) + ts64.tv_nsec);
++    return ((NvU64) timespec64_to_ns(&ts64));
 +#else
      struct timespec ts;
  
@@ -379,16 +389,23 @@ index 064d727..a7308d3 100644
  static int
  nv_procfs_read_text_file(
 diff --git a/kernel/nvidia/nvidia.Kbuild b/kernel/nvidia/nvidia.Kbuild
-index 5ec3e65..339a757 100644
+index 5ec3e65..56509ee 100644
 --- a/kernel/nvidia/nvidia.Kbuild
 +++ b/kernel/nvidia/nvidia.Kbuild
-@@ -150,6 +150,9 @@ NV_CONFTEST_SYMBOL_COMPILE_TESTS += is_export_symbol_present_swiotlb_dma_ops
+@@ -105,6 +105,8 @@ NV_CONFTEST_FUNCTION_COMPILE_TESTS += acquire_console_sem
+ NV_CONFTEST_FUNCTION_COMPILE_TESTS += console_lock
+ NV_CONFTEST_FUNCTION_COMPILE_TESTS += ioremap_cache
+ NV_CONFTEST_FUNCTION_COMPILE_TESTS += ioremap_wc
++NV_CONFTEST_FUNCTION_COMPILE_TESTS += ktime_get_raw_ts64
++NV_CONFTEST_FUNCTION_COMPILE_TESTS += ktime_get_real_ts64
+ NV_CONFTEST_FUNCTION_COMPILE_TESTS += acpi_walk_namespace
+ NV_CONFTEST_FUNCTION_COMPILE_TESTS += sg_alloc_table
+ NV_CONFTEST_FUNCTION_COMPILE_TESTS += pci_get_domain_bus_and_slot
+@@ -150,6 +152,7 @@ NV_CONFTEST_SYMBOL_COMPILE_TESTS += is_export_symbol_present_swiotlb_dma_ops
  NV_CONFTEST_TYPE_COMPILE_TESTS += acpi_op_remove
  NV_CONFTEST_TYPE_COMPILE_TESTS += outer_flush_all
  NV_CONFTEST_TYPE_COMPILE_TESTS += file_operations
 +NV_CONFTEST_TYPE_COMPILE_TESTS += proc_ops
-+NV_CONFTEST_TYPE_COMPILE_TESTS += ktime_get_raw_ts64
-+NV_CONFTEST_TYPE_COMPILE_TESTS += ktime_get_real_ts64
  NV_CONFTEST_TYPE_COMPILE_TESTS += file_inode
  NV_CONFTEST_TYPE_COMPILE_TESTS += kuid_t
  NV_CONFTEST_TYPE_COMPILE_TESTS += dma_ops
