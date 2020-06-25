@@ -1,0 +1,127 @@
+diff --git a/kernel/common/inc/nv-linux.h b/kernel/common/inc/nv-linux.h
+index ac5bb95..7f46c30 100644
+--- a/kernel/common/inc/nv-linux.h
++++ b/kernel/common/inc/nv-linux.h
+@@ -529,11 +529,17 @@ extern int nv_pat_mode;
+ /* keep track of memory usage */
+ #include "nv-memdbg.h"
+ 
+ static inline void *nv_vmalloc(unsigned long size)
+ {
++#if NV_VMALLOC_ARGUMENT_COUNT_ARGUMENT_COUNT == 3
+     void *ptr = __vmalloc(size, GFP_KERNEL, PAGE_KERNEL);
++#elif NV_VMALLOC_ARGUMENT_COUNT_ARGUMENT_COUNT == 2
++    void *ptr = __vmalloc(size, GFP_KERNEL);
++#else
++#error "NV_VMALLOC_ARGUMENT_COUNT_ARGUMENT_COUNT value unrecognized!"
++#endif
+     if (ptr)
+         NV_MEMDBG_ADD(ptr, size);
+     return ptr;
+ }
+ 
+diff --git a/kernel/common/inc/nv-mm.h b/kernel/common/inc/nv-mm.h
+index 1270bf3..8df26f1 100644
+--- a/kernel/common/inc/nv-mm.h
++++ b/kernel/common/inc/nv-mm.h
+@@ -27,10 +27,14 @@
+ 
+ #if !defined(NV_VM_FAULT_T_IS_PRESENT)
+ typedef int vm_fault_t;
+ #endif
+ 
++#if defined(NV_MM_STRUCT_HAS_MMAP_LOCK)
++#define mmap_sem mmap_lock
++#endif
++
+ /* get_user_pages
+  *
+  * The 8-argument version of get_user_pages was deprecated by commit 
+  * (2016 Feb 12: cde70140fed8429acf7a14e2e2cbd3e329036653)for the non-remote case 
+  * (calling get_user_pages with current and current->mm).
+diff --git a/kernel/conftest.sh b/kernel/conftest.sh
+index 7da7505..c04e499 100755
+--- a/kernel/conftest.sh
++++ b/kernel/conftest.sh
+@@ -2622,10 +2622,53 @@ compile_test() {
+             }"
+ 
+             compile_check_conftest "$CODE" "NV_VZALLOC_PRESENT" "" "functions"
+         ;;
+ 
++        vmalloc_argument_count)
++            #
++            # Determine how many arguments __vmalloc takes.
++            #
++            # Changed by commit fc3af83c4fca ("mm: remove the pgprot argument
++            # to __vmalloc")
++            #
++            echo "$CONFTEST_PREAMBLE
++            #include <linux/mm.h>
++            #include <linux/vmalloc.h>
++            void conftest_vmalloc_argument_count(void) {
++                __vmalloc(0, GFP_KERNEL, PAGE_KERNEL);
++            }" > conftest$$.c
++
++            $CC $CFLAGS -c conftest$$.c > /dev/null 2>&1
++            rm -f conftest$$.c
++
++            if [ -f conftest$$.o ]; then
++                echo "#define NV_VMALLOC_ARGUMENT_COUNT_ARGUMENT_COUNT 3" | append_conftest "functions"
++            else
++                echo "#define NV_VMALLOC_ARGUMENT_COUNT_ARGUMENT_COUNT 2" | append_conftest "functions"
++            fi
++
++            rm -f conftest$$.o
++        ;;
++
++        mm_struct_has_mmap_lock)
++            #
++            # Determine if the mm_struct structure has 'mmap_lock'.
++            #
++            # Changed by commit ea7b54944ef9 ("mmap locking API: rename mmap_sem
++            # to mmap_lock")
++            #
++            CODE="
++            #include <linux/mm.h>
++
++            int conftest_mm_struct_has_mmap_lock(void) {
++                return offsetof(struct mm_struct, mmap_lock);
++            }"
++
++            compile_check_conftest "$CODE" "NV_MM_STRUCT_HAS_MMAP_LOCK" "" "types"
++        ;;
++
+         drm_driver_has_set_busid)
+             #
+             # Determine if the drm_driver structure has a 'set_busid' callback
+             # field.
+             #
+diff --git a/kernel/nvidia/nvidia.Kbuild b/kernel/nvidia/nvidia.Kbuild
+index 63e369f..5b45144 100644
+--- a/kernel/nvidia/nvidia.Kbuild
++++ b/kernel/nvidia/nvidia.Kbuild
+@@ -156,10 +156,11 @@ NV_CONFTEST_FUNCTION_COMPILE_TESTS += dma_direct_map_resource
+ NV_CONFTEST_FUNCTION_COMPILE_TESTS += vmf_insert_pfn
+ NV_CONFTEST_FUNCTION_COMPILE_TESTS += jiffies_to_timespec
+ NV_CONFTEST_FUNCTION_COMPILE_TESTS += ktime_get_raw_ts64
+ NV_CONFTEST_FUNCTION_COMPILE_TESTS += ktime_get_real_ts64
+ NV_CONFTEST_FUNCTION_COMPILE_TESTS += ioremap_nocache
++NV_CONFTEST_FUNCTION_COMPILE_TESTS += vmalloc_argument_count
+ 
+ NV_CONFTEST_SYMBOL_COMPILE_TESTS += is_export_symbol_gpl_of_node_to_nid
+ NV_CONFTEST_SYMBOL_COMPILE_TESTS += is_export_symbol_present_swiotlb_map_sg_attrs
+ NV_CONFTEST_SYMBOL_COMPILE_TESTS += is_export_symbol_present_swiotlb_dma_ops
+ 
+@@ -194,10 +195,11 @@ NV_CONFTEST_TYPE_COMPILE_TESTS += backlight_properties_type
+ NV_CONFTEST_TYPE_COMPILE_TESTS += proc_ops
+ NV_CONFTEST_TYPE_COMPILE_TESTS += timeval
+ NV_CONFTEST_TYPE_COMPILE_TESTS += kmem_cache_has_kobj_remove_work
+ NV_CONFTEST_TYPE_COMPILE_TESTS += sysfs_slab_unlink
+ NV_CONFTEST_TYPE_COMPILE_TESTS += pci_dev_has_skip_bus_pm
++NV_CONFTEST_TYPE_COMPILE_TESTS += mm_struct_has_mmap_lock
+ 
+ NV_CONFTEST_GENERIC_COMPILE_TESTS += dom0_kernel_present
+ NV_CONFTEST_GENERIC_COMPILE_TESTS += nvidia_vgpu_kvm_build
+ NV_CONFTEST_GENERIC_COMPILE_TESTS += nvidia_grid_build
+ NV_CONFTEST_GENERIC_COMPILE_TESTS += get_user_pages
