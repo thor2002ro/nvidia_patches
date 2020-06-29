@@ -1,7 +1,7 @@
 # Maintainer: Isaak I. Aleksandrov
 
 pkgname=nvidia-390xx-dkms
-pkgver=390.132
+pkgver=390.138
 pkgrel=420
 pkgdesc="NVIDIA drivers - module sources, 390xx legacy branch"
 arch=('x86_64')
@@ -21,16 +21,10 @@ options=('!strip')
 _pkg="NVIDIA-Linux-x86_64-${pkgver}-no-compat32"
 source=("https://download.nvidia.com/XFree86/Linux-x86_64/${pkgver}/${_pkg}.run"
         'kernel-4.16.patch'
-        "https://gitlab.com/EULA/snippets/-/raw/master/NVIDIA/$pkgver/kernel-5.5.patch"
-        "https://gitlab.com/EULA/snippets/-/raw/master/NVIDIA/$pkgver/kernel-5.6.patch"
-        "https://gitlab.com/EULA/snippets/-/raw/master/NVIDIA/$pkgver/kernel-5.7.patch"
         "https://gitlab.com/EULA/snippets/-/raw/master/NVIDIA/$pkgver/kernel-5.8.patch")
-sha512sums=('cdd9b826d3ad96f6c255296336a988eb8e67e1916859319f6e19a24c32484ec5dbb00312bc641b62068829c757e301d14d6bcfc6d833ce78db83db862df59bbe'
+sha512sums=('a4e6e63cbd74d25c5bef8efee64828acf45e89a27d1a677eab04a9a10fd10eb77bd28d17aab2009b282ae3db97e810b1c07aab80c257e8d981e6a8512c79f789'
             'ad1185d998adbf89abf7aea300e5b3bbabe2296016f42592fbc232a6c3983f233df1103d37f35a041f12cc1c722d3edce813a4a1b215784a49c7f0e3e652b5af'
-            'f73ab1b1e9cced05e95cec0fc835c9cdb958a0b79274d21546310c7df77864e9f9c0008a06c42bdb8cbaa41354f9cc428fb0c5f5b28cf04b7e00553b48a8529f'
-            '72da37feaa284cef8384a80a996583c6d970f67af6bca93c9e258ac39701d68dd3598016f0f4c239ce34cfe178453412a8bd8bfdd7c76258a089e9ea1301cad2'
-            'a92f7a47c447276fe6d4b89ca08c11c03a4f381b3bbfdb9cd5aa44f9c4586b818844468d4df4c0472bd10f4d6c08c679740c5c855be76b0dd557a8b4a6475bcf'
-            'c4318fa70c4b5822e4a572d3ca938f6baea641f9f5f49402b8efb679af9fd82a13e0d67044d4b1d7c9bb967ed00ea1153e36016fcf6265533e9aef286e77e530')
+            '7c5da5d946058522bd84c00dc50230a58359dd8a088c310620060569dffba7a2e91efffbd681ff5ec937fdf880442373a1b105bc8cc554e085b9f2d755004975')
 
 prepare() {
     sh "${_pkg}.run" --extract-only
@@ -41,9 +35,6 @@ prepare() {
     patch -p1 -i '../kernel-4.16.patch'
 
     # https://gitlab.com/EULA/snippets
-    patch -p1 -i '../kernel-5.5.patch'
-    patch -p1 -i '../kernel-5.6.patch'
-    patch -p1 -i '../kernel-5.7.patch'
     patch -p1 -i '../kernel-5.8.patch'
 
     cd kernel
