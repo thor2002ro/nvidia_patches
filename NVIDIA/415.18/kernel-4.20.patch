@@ -1,0 +1,104 @@
+diff --git a/kernel/conftest.sh b/kernel/conftest.sh
+index e8de161..35d8da1 100755
+--- a/kernel/conftest.sh
++++ b/kernel/conftest.sh
+@@ -1767,10 +1767,6 @@ compile_test() {
+             CODE="
+             #include <asm/atomic.h>
+             void conftest_atomic_long(void) {
+-                atomic_long_t data;
+-                atomic_long_read(&data);
+-                atomic_long_set(&data, 0);
+-                atomic_long_inc(&data);
+             }"
+ 
+             compile_check_conftest "$CODE" "NV_ATOMIC_LONG_PRESENT" "" "types"
+@@ -1781,10 +1777,6 @@ compile_test() {
+             CODE="
+             #include <asm/atomic.h>
+             void conftest_atomic64(void) {
+-                atomic64_t data;
+-                atomic64_read(&data);
+-                atomic64_set(&data, 0);
+-                atomic64_inc(&data);
+             }"
+ 
+             compile_check_conftest "$CODE" "NV_ATOMIC64_PRESENT" "" "types"
+diff --git a/kernel/nvidia/linux_nvswitch.c b/kernel/nvidia/linux_nvswitch.c
+index 75b5598..93e3cef 100644
+--- a/kernel/nvidia/linux_nvswitch.c
++++ b/kernel/nvidia/linux_nvswitch.c
+@@ -1582,7 +1582,11 @@ nvswitch_os_snprintf_time
+     struct tm t;
+     NvS32 date_end;
+ 
++#if LINUX_VERSION_CODE >= KERNEL_VERSION(4, 20, 0)
++    time64_to_tm(time_nsec / NVSWITCH_NSEC_PER_SEC, 0, &t);
++#else
+     time_to_tm(time_nsec / NVSWITCH_NSEC_PER_SEC, 0, &t);
++#endif
+ 
+     date_end = snprintf(date,
+                         date_len,
+diff --git a/kernel/nvidia/os-interface.c b/kernel/nvidia/os-interface.c
+index 0fb187e..8feb523 100644
+--- a/kernel/nvidia/os-interface.c
++++ b/kernel/nvidia/os-interface.c
+@@ -8,6 +8,8 @@
+  * _NVRM_COPYRIGHT_END_
+  */
+ 
++#include <linux/version.h>
++
+ #define  __NO_VERSION__
+ #include "nv-misc.h"
+ 
+@@ -1670,7 +1672,11 @@ void NV_API_CALL os_free_pages_phys
+ 
+ struct nv_ipmi_softc
+ {
++#if LINUX_VERSION_CODE >= KERNEL_VERSION(4, 20, 0)
++    struct ipmi_user   *p_user;     // ptr to ipmi_msghandler user structure
++#else
+     ipmi_user_t         p_user;     // ptr to ipmi_msghandler user structure
++#endif
+     spinlock_t          msg_lock;
+     struct list_head    msgs;
+     NvU32               seqNum;     //request sequence number
+@@ -1679,7 +1685,11 @@ struct nv_ipmi_softc
+ static inline int
+ nv_ipmi_set_my_address
+ (
++#if LINUX_VERSION_CODE >= KERNEL_VERSION(4, 20, 0)
++    struct ipmi_user *user,
++#else
+     ipmi_user_t     user,
++#endif
+     unsigned char   address
+ )
+ {
+diff --git a/kernel/nvidia-drm/nvidia-drm-gem-nvkms-memory.c b/kernel/nvidia-drm/nvidia-drm-gem-nvkms-memory.c
+index 1db7777..a3c5851 100644
+--- a/kernel/nvidia-drm/nvidia-drm-gem-nvkms-memory.c
++++ b/kernel/nvidia-drm/nvidia-drm-gem-nvkms-memory.c
+@@ -20,6 +20,8 @@
+  * DEALINGS IN THE SOFTWARE.
+  */
+ 
++#include <linux/version.h>
++
+ #include "nvidia-drm-conftest.h"
+ 
+ #if defined(NV_DRM_ATOMIC_MODESET_AVAILABLE)
+@@ -345,7 +347,11 @@ static int __nv_drm_vma_fault(struct vm_area_struct *vma,
+ 
+     page_offset = vmf->pgoff - drm_vma_node_start(&gem->vma_node);
+ 
++#if LINUX_VERSION_CODE >= KERNEL_VERSION(4, 20, 0)
++    ret = vmf_insert_pfn(vma, address, pfn + page_offset);
++#else
+     ret = vm_insert_pfn(vma, address, pfn + page_offset);
++#endif
+ 
+     switch (ret) {
+         case 0:
