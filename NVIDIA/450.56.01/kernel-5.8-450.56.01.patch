@@ -1,0 +1,67 @@
+diff --git a/kernel/common/inc/nv-mm.h b/kernel/common/inc/nv-mm.h
+index d90f899..1c5f4c0 100644
+--- a/kernel/common/inc/nv-mm.h
++++ b/kernel/common/inc/nv-mm.h
+@@ -23,10 +23,14 @@
+ #ifndef __NV_MM_H__
+ #define __NV_MM_H__
+ 
+ #include "conftest.h"
+ 
++#if defined(NV_MM_STRUCT_HAS_MMAP_LOCK)
++#define mmap_sem mmap_lock
++#endif
++
+ #if !defined(NV_VM_FAULT_T_IS_PRESENT)
+ typedef int vm_fault_t;
+ #endif
+ 
+ /* get_user_pages
+diff --git a/kernel/conftest.sh b/kernel/conftest.sh
+index 24df86c..509e2c4 100755
+--- a/kernel/conftest.sh
++++ b/kernel/conftest.sh
+@@ -2189,10 +2189,27 @@ compile_test() {
+             }"
+ 
+             compile_check_conftest "$CODE" "NV_VZALLOC_PRESENT" "" "functions"
+         ;;
+ 
++        mm_struct_has_mmap_lock)
++            #
++            # Determine if the mm_struct structure has 'mmap_lock'.
++            #
++            # Changed by commit ea7b54944ef9 ("mmap locking API: rename mmap_sem
++            # to mmap_lock")
++            #
++            CODE="
++            #include <linux/mm.h>
++
++            int conftest_mm_struct_has_mmap_lock(void) {
++                return offsetof(struct mm_struct, mmap_lock);
++            }"
++
++            compile_check_conftest "$CODE" "NV_MM_STRUCT_HAS_MMAP_LOCK" "" "types"
++        ;;
++
+         drm_driver_has_set_busid)
+             #
+             # Determine if the drm_driver structure has a 'set_busid' callback
+             # field.
+             #
+diff --git a/kernel/nvidia/nvidia.Kbuild b/kernel/nvidia/nvidia.Kbuild
+index 8b807e4..ce5b551 100644
+--- a/kernel/nvidia/nvidia.Kbuild
++++ b/kernel/nvidia/nvidia.Kbuild
+@@ -176,10 +176,11 @@ NV_CONFTEST_TYPE_COMPILE_TESTS += node_states_n_memory
+ NV_CONFTEST_TYPE_COMPILE_TESTS += kmem_cache_has_kobj_remove_work
+ NV_CONFTEST_TYPE_COMPILE_TESTS += sysfs_slab_unlink
+ NV_CONFTEST_TYPE_COMPILE_TESTS += proc_ops
+ NV_CONFTEST_TYPE_COMPILE_TESTS += vmalloc_has_pgprot_t_arg
+ NV_CONFTEST_TYPE_COMPILE_TESTS += timeval
++NV_CONFTEST_TYPE_COMPILE_TESTS += mm_struct_has_mmap_lock
+ 
+ NV_CONFTEST_GENERIC_COMPILE_TESTS += dom0_kernel_present
+ NV_CONFTEST_GENERIC_COMPILE_TESTS += nvidia_vgpu_hyperv_available
+ NV_CONFTEST_GENERIC_COMPILE_TESTS += nvidia_vgpu_kvm_build
+ NV_CONFTEST_GENERIC_COMPILE_TESTS += nvidia_grid_build
