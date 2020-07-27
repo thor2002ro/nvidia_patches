@@ -2,7 +2,9 @@ diff --git a/kernel/Kbuild b/kernel/Kbuild
 index 1e79d0b..c587f7e 100644
 --- a/kernel/Kbuild
 +++ b/kernel/Kbuild
-@@ -27,10 +27,17 @@
+@@ -25,14 +25,21 @@
+ #
+ # $(1): The object files.
  # $(2): The CFLAGS to add for those object files.
  #
  
@@ -20,11 +22,15 @@ index 1e79d0b..c587f7e 100644
  
  
  #
+ # Include the specifics of the individual NVIDIA kernel modules.
+ #
 diff --git a/kernel/conftest.sh b/kernel/conftest.sh
 index c00c826..40c54f6 100755
 --- a/kernel/conftest.sh
 +++ b/kernel/conftest.sh
-@@ -3585,7 +3585,7 @@ case "$5" in
+@@ -3583,11 +3583,11 @@ case "$5" in
+         fi
+ 
          TAB='	'
  
          if [ -f "$OUTPUT/Module.symvers" ] && \
@@ -33,11 +39,15 @@ index c00c826..40c54f6 100755
                       "$OUTPUT/Module.symvers" >/dev/null 2>&1; then
              exit 0
          fi
+ 
+         echo "The Module.symvers file is missing, or does not contain any"
 diff --git a/kernel/nvidia-drm/nvidia-drm-drv.c b/kernel/nvidia-drm/nvidia-drm-drv.c
 index bc31de7..7eefe95 100644
 --- a/kernel/nvidia-drm/nvidia-drm-drv.c
 +++ b/kernel/nvidia-drm/nvidia-drm-drv.c
-@@ -40,6 +40,7 @@
+@@ -38,10 +38,11 @@
+ #if defined(NV_DRM_AVAILABLE)
+ 
  #include "nvidia-drm-ioctl.h"
  
  #include <drm/drmP.h>
@@ -45,7 +55,11 @@ index bc31de7..7eefe95 100644
  
  /*
   * Commit fcd70cd36b9b ("drm: Split out drm_probe_helper.h")
-@@ -659,7 +660,11 @@ static const struct drm_ioctl_desc nv_drm_ioctls[] = {
+  * moves a number of helper function definitions from
+  * drm/drm_crtc_helper.h to a new drm_probe_helper.h.
+@@ -657,11 +658,15 @@ static const struct drm_ioctl_desc nv_drm_ioctls[] = {
+ #endif /* NV_DRM_ATOMIC_MODESET_AVAILABLE */
+ };
  
  static struct drm_driver nv_drm_driver = {
  
@@ -57,6 +71,8 @@ index bc31de7..7eefe95 100644
  
      .gem_free_object        = nv_drm_gem_free,
  
+     .ioctls                 = nv_drm_ioctls,
+     .num_ioctls             = ARRAY_SIZE(nv_drm_ioctls),
 -- 
 2.27.0
 
