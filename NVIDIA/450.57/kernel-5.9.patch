@@ -1,5 +1,25 @@
+diff --git a/kernel/common/inc/nv-mm.h b/kernel/common/inc/nv-mm.h
+index b04ff67..2df20a3 100644
+--- a/kernel/common/inc/nv-mm.h
++++ b/kernel/common/inc/nv-mm.h
+@@ -142,10 +142,15 @@ typedef int vm_fault_t;
+         #if defined(NV_GET_USER_PAGES_REMOTE_HAS_LOCKED_ARG)
+ 
+                return get_user_pages_remote(tsk, mm, start, nr_pages, flags,
+                                             pages, vmas, NULL);
+ 
++        #elif defined(NV_GET_USER_PAGES_REMOTE_REMOVED_TSK_ARG)
++
++               return get_user_pages_remote(mm, start, nr_pages, flags,
++                                            pages, vmas, NULL);
++
+         #else
+ 
+                return get_user_pages_remote(tsk, mm, start, nr_pages, flags,
+                                             pages, vmas);
+ 
 diff --git a/kernel/conftest.sh b/kernel/conftest.sh
-index a4ebf81..a4c1b32 100755
+index a4ebf81..dd383ba 100755
 --- a/kernel/conftest.sh
 +++ b/kernel/conftest.sh
 @@ -2032,10 +2032,69 @@ compile_test() {
@@ -72,7 +92,41 @@ index a4ebf81..a4c1b32 100755
              # Determine if jiffies_to_timespec() is present
              #
              # removed by commit 751addac78b6
-@@ -2708,10 +2767,25 @@ compile_test() {
+@@ -2643,10 +2702,33 @@ compile_test() {
+             else
+                 echo "#undef NV_GET_USER_PAGES_REMOTE_HAS_LOCKED_ARG" | append_conftest "functions"
+             fi
+             echo "#undef NV_GET_USER_PAGES_REMOTE_HAS_WRITE_AND_FORCE_ARGS" | append_conftest "functions"
+ 
++            # conftest #4: check if get_user_pages_remote() has removed tsk argument
++
++            echo "$CONFTEST_PREAMBLE
++            #include <linux/mm.h>
++            long get_user_pages_remote(struct mm_struct *mm,
++                                       unsigned long start,
++                                       unsigned long nr_pages,
++                                       unsigned int gup_flags,
++                                       struct page **pages,
++                                       struct vm_area_struct **vmas,
++                                       int *locked) {
++                return 0;
++            }" > conftest$$.c
++
++            $CC $CFLAGS -c conftest$$.c > /dev/null 2>&1
++            rm -f conftest$$.c
++
++            if [ -f conftest$$.o ]; then
++                echo "#define NV_GET_USER_PAGES_REMOTE_REMOVED_TSK_ARG" | append_conftest "functions"
++                rm -f conftest$$.o
++            else
++                echo "#undef NV_GET_USER_PAGES_REMOTE_REMOVED_TSK_ARG" | append_conftest "functions"
++            fi
+         ;;
+ 
+         usleep_range)
+             #
+             # Determine if the function usleep_range() is present.
+@@ -2708,10 +2790,25 @@ compile_test() {
              else
                  echo "#define NV_DRM_GEM_OBJECT_LOOKUP_ARGUMENT_COUNT 2" | append_conftest "functions"
              fi
@@ -98,7 +152,7 @@ index a4ebf81..a4c1b32 100755
              # Determine if drm_driver::master_drop() has 'from_release' argument.
              #
              # Last argument 'bool from_release' has been removed by commit
-@@ -3799,10 +3873,20 @@ compile_test() {
+@@ -3799,10 +3896,30 @@ compile_test() {
  
              compile_check_conftest "$CODE" "NV_MM_HAS_MMAP_LOCK" "" "types"
  
@@ -112,6 +166,16 @@ index a4ebf81..a4c1b32 100755
 +            }"
 +
 +            compile_check_conftest "$CODE" "NV_SMP_READ_BARRIER_DEPENDS_PRESENT" "" "functions"
++        ;;
++
++        vga_tryget)
++            CODE="
++            #include <linux/vgaarb.h>
++            void conftest_vga_tryget(void) {
++                vga_tryget();
++            }"
++
++            compile_check_conftest "$CODE" "NV_VGA_TRYGET_PRESENT" "" "functions"
 +        ;;
 +
          # When adding a new conftest entry, please use the correct format for
@@ -328,3 +392,36 @@ index 69cb0a0..f6c820a 100644
  
  // Same as uvm_va_range_block except that the block is created if not already
  // present in the array. If NV_OK is returned, the block has been allocated
+diff --git a/kernel/nvidia/nv-pci.c b/kernel/nvidia/nv-pci.c
+index 9a8a715..a308c7d 100644
+--- a/kernel/nvidia/nv-pci.c
++++ b/kernel/nvidia/nv-pci.c
+@@ -421,11 +421,11 @@ nv_pci_probe
+ #endif
+ 
+     pci_set_master(pci_dev);
+ 
+ #if defined(CONFIG_VGA_ARB) && !defined(NVCPU_PPC64LE)
+-#if defined(VGA_DEFAULT_DEVICE)
++#if defined(NV_VGA_TRYGET_PRESENT) && defined(VGA_DEFAULT_DEVICE)
+     vga_tryget(VGA_DEFAULT_DEVICE, VGA_RSRC_LEGACY_MASK);
+ #endif
+     vga_set_legacy_decoding(pci_dev, VGA_RSRC_NONE);
+ #endif
+ 
+diff --git a/kernel/nvidia/nvidia.Kbuild b/kernel/nvidia/nvidia.Kbuild
+index 424f6e6..ce8114a 100644
+--- a/kernel/nvidia/nvidia.Kbuild
++++ b/kernel/nvidia/nvidia.Kbuild
+@@ -144,10 +144,11 @@ NV_CONFTEST_FUNCTION_COMPILE_TESTS += tegra_get_platform
+ NV_CONFTEST_FUNCTION_COMPILE_TESTS += flush_cache_all
+ NV_CONFTEST_FUNCTION_COMPILE_TESTS += vmf_insert_pfn
+ NV_CONFTEST_FUNCTION_COMPILE_TESTS += jiffies_to_timespec
+ NV_CONFTEST_FUNCTION_COMPILE_TESTS += ktime_get_raw_ts64
+ NV_CONFTEST_FUNCTION_COMPILE_TESTS += ktime_get_real_ts64
++NV_CONFTEST_FUNCTION_COMPILE_TESTS += vga_tryget
+ 
+ NV_CONFTEST_SYMBOL_COMPILE_TESTS += is_export_symbol_gpl_of_node_to_nid
+ NV_CONFTEST_SYMBOL_COMPILE_TESTS += is_export_symbol_present_swiotlb_map_sg_attrs
+ NV_CONFTEST_SYMBOL_COMPILE_TESTS += is_export_symbol_present_swiotlb_dma_ops
+ NV_CONFTEST_SYMBOL_COMPILE_TESTS += is_export_symbol_present___close_fd
