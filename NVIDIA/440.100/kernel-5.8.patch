@@ -1,8 +1,8 @@
 diff --git a/kernel/common/inc/nv-linux.h b/kernel/common/inc/nv-linux.h
-index dd5303b..3c6fb8a 100644
+index 7661ac7..378015c 100644
 --- a/kernel/common/inc/nv-linux.h
 +++ b/kernel/common/inc/nv-linux.h
-@@ -551,11 +551,17 @@ extern int nv_pat_mode;
+@@ -507,11 +507,17 @@ extern NvBool nvos_is_chipset_io_coherent(void);
  /* keep track of memory usage */
  #include "nv-memdbg.h"
  
@@ -21,7 +21,7 @@ index dd5303b..3c6fb8a 100644
  }
  
 diff --git a/kernel/common/inc/nv-mm.h b/kernel/common/inc/nv-mm.h
-index e0d783e..9c27843 100644
+index 4d75de0..0174626 100644
 --- a/kernel/common/inc/nv-mm.h
 +++ b/kernel/common/inc/nv-mm.h
 @@ -23,10 +23,14 @@
@@ -34,16 +34,16 @@ index e0d783e..9c27843 100644
 +#define mmap_sem mmap_lock
 +#endif
 +
- #ifndef NV_VMF_INSERT_PFN_PRESENT
+ #if !defined(NV_VM_FAULT_T_IS_PRESENT)
  typedef int vm_fault_t;
  #endif
  
  /* get_user_pages
 diff --git a/kernel/conftest.sh b/kernel/conftest.sh
-index 5220ad5..d5ab515 100755
+index 4545492..dc5657b 100755
 --- a/kernel/conftest.sh
 +++ b/kernel/conftest.sh
-@@ -2222,10 +2222,53 @@ compile_test() {
+@@ -2120,10 +2120,53 @@ compile_test() {
              }"
  
              compile_check_conftest "$CODE" "NV_VZALLOC_PRESENT" "" "functions"
@@ -98,27 +98,27 @@ index 5220ad5..d5ab515 100755
              # field.
              #
 diff --git a/kernel/nvidia/nvidia.Kbuild b/kernel/nvidia/nvidia.Kbuild
-index 0c76cad..807a830 100644
+index ddc548d..863775d 100644
 --- a/kernel/nvidia/nvidia.Kbuild
 +++ b/kernel/nvidia/nvidia.Kbuild
-@@ -157,10 +157,11 @@ NV_CONFTEST_FUNCTION_COMPILE_TESTS += timer_setup
- NV_CONFTEST_FUNCTION_COMPILE_TESTS += pci_enable_msix_range
- NV_CONFTEST_FUNCTION_COMPILE_TESTS += compound_order
- NV_CONFTEST_FUNCTION_COMPILE_TESTS += do_gettimeofday
- NV_CONFTEST_FUNCTION_COMPILE_TESTS += dma_direct_map_resource
+@@ -143,10 +143,11 @@ NV_CONFTEST_FUNCTION_COMPILE_TESTS += tegra_get_platform
+ NV_CONFTEST_FUNCTION_COMPILE_TESTS += flush_cache_all
  NV_CONFTEST_FUNCTION_COMPILE_TESTS += vmf_insert_pfn
+ NV_CONFTEST_FUNCTION_COMPILE_TESTS += jiffies_to_timespec
+ NV_CONFTEST_FUNCTION_COMPILE_TESTS += ktime_get_raw_ts64
+ NV_CONFTEST_FUNCTION_COMPILE_TESTS += ktime_get_real_ts64
 +NV_CONFTEST_FUNCTION_COMPILE_TESTS += vmalloc_argument_count
  
  NV_CONFTEST_SYMBOL_COMPILE_TESTS += is_export_symbol_gpl_of_node_to_nid
  NV_CONFTEST_SYMBOL_COMPILE_TESTS += is_export_symbol_present_swiotlb_map_sg_attrs
  NV_CONFTEST_SYMBOL_COMPILE_TESTS += is_export_symbol_present_swiotlb_dma_ops
  
-@@ -190,10 +191,11 @@ NV_CONFTEST_TYPE_COMPILE_TESTS += vm_fault_present
- NV_CONFTEST_TYPE_COMPILE_TESTS += vm_fault_has_address
- NV_CONFTEST_TYPE_COMPILE_TESTS += backlight_properties_type
- NV_CONFTEST_TYPE_COMPILE_TESTS += vmbus_channel_has_ringbuffer_page
+@@ -170,10 +171,11 @@ NV_CONFTEST_TYPE_COMPILE_TESTS += device_of_node
+ NV_CONFTEST_TYPE_COMPILE_TESTS += node_states_n_memory
  NV_CONFTEST_TYPE_COMPILE_TESTS += kmem_cache_has_kobj_remove_work
  NV_CONFTEST_TYPE_COMPILE_TESTS += sysfs_slab_unlink
+ NV_CONFTEST_TYPE_COMPILE_TESTS += proc_ops
+ NV_CONFTEST_TYPE_COMPILE_TESTS += timeval
 +NV_CONFTEST_TYPE_COMPILE_TESTS += mm_struct_has_mmap_lock
  
  NV_CONFTEST_GENERIC_COMPILE_TESTS += dom0_kernel_present

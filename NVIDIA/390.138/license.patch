@@ -1,0 +1,51 @@
+diff --git a/kernel/nvidia-modeset/nvidia-modeset-linux.c b/kernel/nvidia-modeset/nvidia-modeset-linux.c
+index 8fb2161..bfae5d0 100644
+--- a/kernel/nvidia-modeset/nvidia-modeset-linux.c
++++ b/kernel/nvidia-modeset/nvidia-modeset-linux.c
+@@ -1301,11 +1301,11 @@ restart:
+ 
+ module_init(nvkms_init);
+ module_exit(nvkms_exit);
+ 
+ #if defined(MODULE_LICENSE)
+-  MODULE_LICENSE("NVIDIA");
++  MODULE_LICENSE("GPL");
+ #endif
+ #if defined(MODULE_INFO)
+   MODULE_INFO(supported, "external");
+ #endif
+ #if defined(MODULE_VERSION)
+diff --git a/kernel/nvidia/nv-frontend.c b/kernel/nvidia/nv-frontend.c
+index 59c69a0..cc81ba4 100644
+--- a/kernel/nvidia/nv-frontend.c
++++ b/kernel/nvidia/nv-frontend.c
+@@ -13,11 +13,11 @@
+ #include "nv-linux.h"
+ #include "nv-reg.h"
+ #include "nv-frontend.h"
+ 
+ #if defined(MODULE_LICENSE)
+-MODULE_LICENSE("NVIDIA");
++MODULE_LICENSE("GPL");
+ #endif
+ #if defined(MODULE_INFO)
+ MODULE_INFO(supported, "external");
+ #endif
+ #if defined(MODULE_VERSION)
+diff --git a/kernel/nvidia/nv.c b/kernel/nvidia/nv.c
+index a7be80a..7bb8a0d 100644
+--- a/kernel/nvidia/nv.c
++++ b/kernel/nvidia/nv.c
+@@ -41,11 +41,11 @@
+  * are present in nv-frontend.c.
+  */
+ 
+ #if (NV_BUILD_MODULE_INSTANCES != 0)
+ #if defined(MODULE_LICENSE)
+-MODULE_LICENSE("NVIDIA");
++MODULE_LICENSE("GPL");
+ #endif
+ #if defined(MODULE_INFO)
+ MODULE_INFO(supported, "external");
+ #endif
+ #if defined(MODULE_VERSION)

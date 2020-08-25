@@ -1,5 +1,5 @@
 diff --git a/kernel/common/inc/nv-linux.h b/kernel/common/inc/nv-linux.h
-index ac5bb95..7f46c30 100644
+index ac5bb95..37c6841 100644
 --- a/kernel/common/inc/nv-linux.h
 +++ b/kernel/common/inc/nv-linux.h
 @@ -529,11 +529,17 @@ extern int nv_pat_mode;
@@ -8,12 +8,12 @@ index ac5bb95..7f46c30 100644
  
  static inline void *nv_vmalloc(unsigned long size)
  {
-+#if NV_VMALLOC_ARGUMENT_COUNT_ARGUMENT_COUNT == 3
++#if NV_VMALLOC_ARGUMENT_COUNT == 3
      void *ptr = __vmalloc(size, GFP_KERNEL, PAGE_KERNEL);
-+#elif NV_VMALLOC_ARGUMENT_COUNT_ARGUMENT_COUNT == 2
++#elif NV_VMALLOC_ARGUMENT_COUNT == 2
 +    void *ptr = __vmalloc(size, GFP_KERNEL);
 +#else
-+#error "NV_VMALLOC_ARGUMENT_COUNT_ARGUMENT_COUNT value unrecognized!"
++#error "NV_VMALLOC_ARGUMENT_COUNT value unrecognized!"
 +#endif
      if (ptr)
          NV_MEMDBG_ADD(ptr, size);
@@ -40,7 +40,7 @@ index 1270bf3..8df26f1 100644
   * (2016 Feb 12: cde70140fed8429acf7a14e2e2cbd3e329036653)for the non-remote case 
   * (calling get_user_pages with current and current->mm).
 diff --git a/kernel/conftest.sh b/kernel/conftest.sh
-index 7da7505..c04e499 100755
+index 7da7505..cdb249c 100755
 --- a/kernel/conftest.sh
 +++ b/kernel/conftest.sh
 @@ -2622,10 +2622,53 @@ compile_test() {
@@ -67,9 +67,9 @@ index 7da7505..c04e499 100755
 +            rm -f conftest$$.c
 +
 +            if [ -f conftest$$.o ]; then
-+                echo "#define NV_VMALLOC_ARGUMENT_COUNT_ARGUMENT_COUNT 3" | append_conftest "functions"
++                echo "#define NV_VMALLOC_ARGUMENT_COUNT 3" | append_conftest "functions"
 +            else
-+                echo "#define NV_VMALLOC_ARGUMENT_COUNT_ARGUMENT_COUNT 2" | append_conftest "functions"
++                echo "#define NV_VMALLOC_ARGUMENT_COUNT 2" | append_conftest "functions"
 +            fi
 +
 +            rm -f conftest$$.o
@@ -125,3 +125,6 @@ index 63e369f..5b45144 100644
  NV_CONFTEST_GENERIC_COMPILE_TESTS += nvidia_vgpu_kvm_build
  NV_CONFTEST_GENERIC_COMPILE_TESTS += nvidia_grid_build
  NV_CONFTEST_GENERIC_COMPILE_TESTS += get_user_pages
+-- 
+2.28.0
+
